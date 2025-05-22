@@ -34,7 +34,27 @@
             box-sizing: border-box;
         }
         button { margin-top: 15px; padding: 10px 20px; }
-        .flash { color: green; margin-bottom: 15px; }
+        .flash { 
+            color: #2c5282;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #ebf8ff;
+            border: 1px solid #bee3f8;
+            text-align: center;
+            max-width: 800px;
+        }
+        .flash .patient-id {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .flash .reference-note {
+            font-size: 0.9em;
+            color: #4a5568;
+            display: block;
+        }
         h2 { text-align: center; }
         h3 { text-align: left; }
         .section { margin-bottom: 30px; }
@@ -69,7 +89,10 @@
     <h2>Patient Data</h2>
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        <div class="flash">{{ messages[0] }}</div>
+        <div class="flash">
+            <span class="patient-id">{{ messages[0].split('\n')[0] }}</span>
+            <span class="reference-note">{{ messages[0].split('\n')[1] }}</span>
+        </div>
       {% endif %}
     {% endwith %}
     <form method="post" enctype="multipart/form-data">
@@ -89,24 +112,52 @@
                 </tr>
 
                 <tr>
-                    <td><label for="sample_id"><span class="required">*</span>Sample ID:</label></td>
-                    <td><input type="text" id="sample_id" name="sample_id" required></td>
-                </tr>                
-
-                <tr>
                     <td><label for="age"><span class="required">*</span>Age:</label></td>
                     <td><input type="number" id="age" name="age" min="0" required></td>
                 </tr>
 
                 <tr>
-                    <td><label for="diagnosis"><span class="required">*</span>Diagnosis:</label></td>
+                    <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
                     <td>
-                        <select id="diagnosis" name="diagnosis" required onchange="updateFormFields()">
-                            <option value="">Select</option>
-                            <option value="Breast Cancer">Breast Cancer</option>
-                            <option value="Brain Cancer">Brain Cancer</option>
-                            <option value="Other">Other</option>
+                        <select id="diagnosis_level1" name="diagnosis_level1" required onchange="updateDiagnosisLevel2()">
+                            <option value="">Select Level 1</option>
+                            {% for level1 in level1_list %}
+                            <option value="{{ level1 }}">{{ level1 }}</option>
+                            {% endfor %}
                         </select>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td><label for="diagnosis_level2"><span class="required">*</span>Diagnosis Level 2:</label></td>
+                    <td>
+                        <select id="diagnosis_level2" name="diagnosis_level2" required onchange="updateDiagnosisLevel3()">
+                            <option value="">Select Level 2</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
+                    <td>
+                        <select id="diagnosis_level3" name="diagnosis_level3">
+                            <option value="">Select Level 3 (Optional)</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td colspan="2">
+                        <button type="button" class="btn btn-secondary" onclick="showAdditionalFields()">
+                            Display Additional Fields
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- Container for dynamic diagnosis-specific dropdowns -->
+                <tr id="diagnosis-specific-dropdowns-row" style="display: none;">
+                    <td colspan="2">
+                        <div id="diagnosis-specific-dropdowns"></div>
                     </td>
                 </tr>
 
@@ -206,7 +257,7 @@
 
     <script>
         function updateFormFields() {
-            const diagnosis = document.getElementById('diagnosis').value;
+            const diagnosis = document.getElementById('diagnosis_level1').value;
             
             // Hide all conditional fields first
             document.querySelectorAll('.conditional-field').forEach(field => {
@@ -223,6 +274,146 @@
                     field.style.display = 'table-row';
                 });
             }
+        }
+
+        function clearAdditionalFields() {
+            const container = document.getElementById('diagnosis-specific-dropdowns');
+            container.innerHTML = '';
+            document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
+        }
+
+        function updateDiagnosisLevel2() {
+            const level1 = document.getElementById('diagnosis_level1').value;
+            const level2Select = document.getElementById('diagnosis_level2');
+            const level3Select = document.getElementById('diagnosis_level3');
+            
+            // Reset level2 and level3
+            level2Select.innerHTML = '<option value="">Select Level 2</option>';
+            level3Select.innerHTML = '<option value="">Select Level 3</option>';
+            
+            // Clear additional fields when diagnosis changes
+            clearAdditionalFields();
+            
+            if (level1) {
+                fetch(`/get_level2/${encodeURIComponent(level1)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(level2 => {
+                            const option = document.createElement('option');
+                            option.value = level2;
+                            option.textContent = level2;
+                            level2Select.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function updateDiagnosisLevel3() {
+            const level2 = document.getElementById('diagnosis_level2').value;
+            const level3Select = document.getElementById('diagnosis_level3');
+            
+            // Reset level3
+            level3Select.innerHTML = '<option value="">Select Level 3</option>';
+            
+            // Clear additional fields when diagnosis changes
+            clearAdditionalFields();
+            
+            if (level2) {
+                fetch(`/get_level3/${encodeURIComponent(level2)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(level3 => {
+                            const option = document.createElement('option');
+                            option.value = level3;
+                            option.textContent = level3;
+                            level3Select.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function showAdditionalFields() {
+            const level1 = document.getElementById('diagnosis_level1').value;
+            const level2 = document.getElementById('diagnosis_level2').value;
+            const level3 = document.getElementById('diagnosis_level3').value;
+            
+            // Clear any existing dynamic dropdowns
+            const container = document.getElementById('diagnosis-specific-dropdowns');
+            container.innerHTML = '';
+            
+            // Build diagnosis string based on available levels
+            let diagnosis = '';
+            if (level1) {
+                diagnosis = level1;
+                if (level2) {
+                    diagnosis += ' > ' + level2;
+                    if (level3) {
+                        diagnosis += ' > ' + level3;
+                    }
+                }
+            }
+            
+            if (!diagnosis) {
+                alert('Please select at least Level 1 diagnosis');
+                return;
+            }
+            
+            fetch(`/get_diagnosis_dropdowns/${encodeURIComponent(diagnosis)}`)
+                .then(response => response.json())
+                .then(dropdowns => {
+                    if (dropdowns.length > 0) {
+                        // Create a table for the dropdowns
+                        const dropdownTable = document.createElement('table');
+                        dropdownTable.className = 'form-table';
+                        
+                        dropdowns.forEach(dropdown => {
+                            const dropdownRow = document.createElement('tr');
+                            
+                            const labelCell = document.createElement('td');
+                            const label = document.createElement('label');
+                            label.htmlFor = dropdown.name;
+                            label.textContent = dropdown.label;
+                            labelCell.appendChild(label);
+                            
+                            const selectCell = document.createElement('td');
+                            const select = document.createElement('select');
+                            select.className = 'form-control';
+                            select.name = dropdown.name;
+                            select.id = dropdown.name;
+                            
+                            // Add empty option
+                            const emptyOption = document.createElement('option');
+                            emptyOption.value = '';
+                            emptyOption.textContent = 'Select ' + dropdown.label;
+                            select.appendChild(emptyOption);
+                            
+                            // Add value options
+                            dropdown.values.forEach(value => {
+                                const option = document.createElement('option');
+                                option.value = value;
+                                option.textContent = value;
+                                select.appendChild(option);
+                            });
+                            
+                            selectCell.appendChild(select);
+                            dropdownRow.appendChild(labelCell);
+                            dropdownRow.appendChild(selectCell);
+                            dropdownTable.appendChild(dropdownRow);
+                        });
+                        
+                        container.appendChild(dropdownTable);
+                        document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'table-row';
+                    } else {
+                        alert('No additional fields available for this diagnosis');
+                        document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error loading additional fields');
+                });
         }
 
         function updateFileList(input) {
@@ -257,6 +448,10 @@
 
         // Initialize form fields on page load
         document.addEventListener('DOMContentLoaded', updateFormFields);
+
+        // Add event listeners
+        document.getElementById('diagnosis_level1').addEventListener('change', updateDiagnosisLevel2);
+        document.getElementById('diagnosis_level2').addEventListener('change', updateDiagnosisLevel3);
     </script>
 </body>
 </html> 
