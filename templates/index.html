@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        form { max-width: 800px; margin: auto; }
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .form-table td {
+            padding: 8px 0;
+            vertical-align: middle;
+        }
+        .form-table td:first-child {
+            width: 40%;
+            padding-right: 15px;
+        }
+        .form-table td:last-child {
+            width: 60%;
+        }
+        label {
+            display: block;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            max-width: 300px;
+            box-sizing: border-box;
+        }
+        button { margin-top: 15px; padding: 10px 20px; }
+        .flash { color: green; margin-bottom: 15px; }
+        h2 { text-align: center; }
+        h3 { text-align: left; }
+        .section { margin-bottom: 30px; }
+        .required { color: red; margin-right: 3px; }
+        .conditional-field { display: none; }
+        .file-list {
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .remove-file {
+            color: red;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Patient Data</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">{{ messages[0] }}</div>
+      {% endif %}
+    {% endwith %}
+    <form method="post" enctype="multipart/form-data">
+        <div class="section">
+            <h3>Clinical Data</h3>
+            <table class="form-table">
+                <tr>
+                    <td><label for="gender"><span class="required">*</span>Gender:</label></td>
+                    <td>
+                        <select id="gender" name="gender" required>
+                            <option value="">Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td><label for="sample_id"><span class="required">*</span>Sample ID:</label></td>
+                    <td><input type="text" id="sample_id" name="sample_id" required></td>
+                </tr>                
+
+                <tr>
+                    <td><label for="age"><span class="required">*</span>Age:</label></td>
+                    <td><input type="number" id="age" name="age" min="0" required></td>
+                </tr>
+
+                <tr>
+                    <td><label for="diagnosis"><span class="required">*</span>Diagnosis:</label></td>
+                    <td>
+                        <select id="diagnosis" name="diagnosis" required onchange="updateFormFields()">
+                            <option value="">Select</option>
+                            <option value="Breast Cancer">Breast Cancer</option>
+                            <option value="Brain Cancer">Brain Cancer</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td><label for="report_date"><span class="required">*</span>Report Date:</label></td>
+                    <td><input type="date" id="report_date" name="report_date" required></td>
+                </tr>
+
+                <tr>
+                    <td><label for="tumor_mutational_burden">Tumor Mutational Burden per Megabase:</label></td>
+                    <td><input type="number" step="any" id="tumor_mutational_burden" name="tumor_mutational_burden"></td>
+                </tr>
+
+                <!-- Breast Cancer specific fields -->
+                <tr class="conditional-field breast-cancer-field">
+                    <td><label for="pdl1_status">PDL1 Status:</label></td>
+                    <td>
+                        <select id="pdl1_status" name="pdl1_status">
+                            <option value="">Select</option>
+                            <option value="High">High</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr class="conditional-field breast-cancer-field">
+                    <td><label for="her2_status">HER2 Status:</label></td>
+                    <td>
+                        <select id="her2_status" name="her2_status">
+                            <option value="">Select</option>
+                            <option value="Positive">Positive</option>
+                            <option value="Negative">Negative</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr class="conditional-field breast-cancer-field">
+                    <td><label for="pr_status">PR Status:</label></td>
+                    <td>
+                        <select id="pr_status" name="pr_status">
+                            <option value="">Select</option>
+                            <option value="Positive">Positive</option>
+                            <option value="Negative">Negative</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <tr class="conditional-field breast-cancer-field">
+                    <td><label for="er_status">ER Status:</label></td>
+                    <td>
+                        <select id="er_status" name="er_status">
+                            <option value="">Select</option>
+                            <option value="Positive">Positive</option>
+                            <option value="Negative">Negative</option>
+                        </select>
+                    </td>
+                </tr>
+
+                <!-- Brain Cancer specific fields -->
+                <tr class="conditional-field brain-cancer-field">
+                    <td><label for="mgmt_promoter_status">MGMT Promoter Status:</label></td>
+                    <td>
+                        <select id="mgmt_promoter_status" name="mgmt_promoter_status">
+                            <option value="">Select</option>
+                            <option value="Methylated">Methylated</option>
+                            <option value="Unmethylated">Unmethylated</option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="section">
+            <h3>Additional Information</h3>
+            <table class="form-table">
+                <tr>
+                    <td><label for="description">Description:</label></td>
+                    <td>
+                        <textarea id="description" name="description" rows="6" style="width: 100%; max-width: 500px;"></textarea>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="section">
+            <h3>Genomic Data</h3>
+            <table class="form-table">
+                <tr>
+                    <td><label for="genomic_images">Upload Genomic Data Images:</label></td>
+                    <td>
+                        <input type="file" id="genomic_images" name="genomic_images" accept="image/*" multiple onchange="updateFileList(this)">
+                        <div id="fileList" class="file-list"></div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        function updateFormFields() {
+            const diagnosis = document.getElementById('diagnosis').value;
+            
+            // Hide all conditional fields first
+            document.querySelectorAll('.conditional-field').forEach(field => {
+                field.style.display = 'none';
+            });
+
+            // Show relevant fields based on diagnosis
+            if (diagnosis === 'Breast Cancer') {
+                document.querySelectorAll('.breast-cancer-field').forEach(field => {
+                    field.style.display = 'table-row';
+                });
+            } else if (diagnosis === 'Brain Cancer') {
+                document.querySelectorAll('.brain-cancer-field').forEach(field => {
+                    field.style.display = 'table-row';
+                });
+            }
+        }
+
+        function updateFileList(input) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            Array.from(input.files).forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>${file.name}</span>
+                    <span class="remove-file" onclick="removeFile(${index})">×</span>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function removeFile(index) {
+            const input = document.getElementById('genomic_images');
+            const dt = new DataTransfer();
+            const files = input.files;
+
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+
+            input.files = dt.files;
+            updateFileList(input);
+        }
+
+        // Initialize form fields on page load
+        document.addEventListener('DOMContentLoaded', updateFormFields);
+    </script>
+</body>
+</html> 
