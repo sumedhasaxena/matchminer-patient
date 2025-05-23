@@ -351,63 +351,6 @@
                         <td><label for="tumor_mutational_burden">Tumor Mutational Burden per Megabase:</label></td>
                         <td><input type="number" step="any" id="tumor_mutational_burden" name="tumor_mutational_burden"></td>
                     </tr>
-
-                    <!-- Breast Cancer specific fields -->
-                    <tr class="conditional-field breast-cancer-field">
-                        <td><label for="pdl1_status">PDL1 Status:</label></td>
-                        <td>
-                            <select id="pdl1_status" name="pdl1_status">
-                                <option value="">Select</option>
-                                <option value="High">High</option>
-                                <option value="Low">Low</option>
-                            </select>
-                        </td>
-                    </tr>
-
-                    <tr class="conditional-field breast-cancer-field">
-                        <td><label for="her2_status">HER2 Status:</label></td>
-                        <td>
-                            <select id="her2_status" name="her2_status">
-                                <option value="">Select</option>
-                                <option value="Positive">Positive</option>
-                                <option value="Negative">Negative</option>
-                            </select>
-                        </td>
-                    </tr>
-
-                    <tr class="conditional-field breast-cancer-field">
-                        <td><label for="pr_status">PR Status:</label></td>
-                        <td>
-                            <select id="pr_status" name="pr_status">
-                                <option value="">Select</option>
-                                <option value="Positive">Positive</option>
-                                <option value="Negative">Negative</option>
-                            </select>
-                        </td>
-                    </tr>
-
-                    <tr class="conditional-field breast-cancer-field">
-                        <td><label for="er_status">ER Status:</label></td>
-                        <td>
-                            <select id="er_status" name="er_status">
-                                <option value="">Select</option>
-                                <option value="Positive">Positive</option>
-                                <option value="Negative">Negative</option>
-                            </select>
-                        </td>
-                    </tr>
-
-                    <!-- Brain Cancer specific fields -->
-                    <tr class="conditional-field brain-cancer-field">
-                        <td><label for="mgmt_promoter_status">MGMT Promoter Status:</label></td>
-                        <td>
-                            <select id="mgmt_promoter_status" name="mgmt_promoter_status">
-                                <option value="">Select</option>
-                                <option value="Methylated">Methylated</option>
-                                <option value="Unmethylated">Unmethylated</option>
-                            </select>
-                        </td>
-                    </tr>
                 </table>
             </div>
             <div class="section">
@@ -434,36 +377,13 @@
                     </tr>
                 </table>
             </div>
-            <button type="submit" class="submit-btn">Submit</button>
+            <div style="display: flex; justify-content: center; gap: 16px;">
+                <button type="submit" class="submit-btn">Submit</button>
+                <button type="button" class="submit-btn" onclick="resetForm()">Reset</button>
+            </div>
         </form>
 
         <script>
-            function updateFormFields() {
-                const diagnosis = document.getElementById('diagnosis_level1').value;
-                
-                // Hide all conditional fields first
-                document.querySelectorAll('.conditional-field').forEach(field => {
-                    field.style.display = 'none';
-                });
-
-                // Show relevant fields based on diagnosis
-                if (diagnosis === 'Breast Cancer') {
-                    document.querySelectorAll('.breast-cancer-field').forEach(field => {
-                        field.style.display = 'table-row';
-                    });
-                } else if (diagnosis === 'Brain Cancer') {
-                    document.querySelectorAll('.brain-cancer-field').forEach(field => {
-                        field.style.display = 'table-row';
-                    });
-                }
-            }
-
-            function clearAdditionalFields() {
-                const container = document.getElementById('diagnosis-specific-dropdowns');
-                container.innerHTML = '';
-                document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
-            }
-
             function toggleHierarchy() {
                 const button = document.querySelector('.toggle-hierarchy');
                 const content = document.querySelector('.hierarchy-content');
@@ -491,9 +411,6 @@
                 // Reset level2 and level3
                 level2Select.innerHTML = '<option value="">Select Level 2</option>';
                 level3Select.innerHTML = '<option value="">Select Level 3</option>';
-                
-                // Clear additional fields when diagnosis changes
-                clearAdditionalFields();
                 
                 if (level1) {
                     // Fetch and populate the hierarchy table
@@ -570,9 +487,6 @@
                 
                 // Reset level3
                 level3Select.innerHTML = '<option value="">Select Level 3</option>';
-                
-                // Clear additional fields when diagnosis changes
-                clearAdditionalFields();
                 
                 if (level2) {
                     fetch(`/get_level3/${encodeURIComponent(level2)}`)
@@ -711,11 +625,29 @@
                 updateFileList(input);
             }
 
-            // Initialize form fields on page load
-            document.addEventListener('DOMContentLoaded', updateFormFields);
+            function resetForm() {
+                const form = document.querySelector('form');
+                form.reset();
+                // Reset dynamic dropdowns
+                updateDiagnosisLevel2();
+                // Clear file list display
+                document.getElementById('fileList').innerHTML = '';
+                // Hide additional fields
+                document.getElementById('diagnosis-specific-dropdowns').innerHTML = '';
+                document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
+                // Hide hierarchy
+                const hierarchyDiv = document.getElementById('diagnosis-hierarchy');
+                if (hierarchyDiv) hierarchyDiv.style.display = 'none';
+                // Hide messages
+                const messageDiv = document.getElementById('no-fields-message');
+                if (messageDiv) messageDiv.style.display = 'none';
+                // Hide patient ID flash banner
+                const flashBanner = document.querySelector('.flash');
+                if (flashBanner) flashBanner.style.display = 'none';
+            }
 
-            // Add event listener only for diagnosis_level2 (level1 uses HTML onchange)
-            document.getElementById('diagnosis_level2').addEventListener('change', updateDiagnosisLevel3);
+            // Initialize form fields on page load
+            document.addEventListener('DOMContentLoaded', updateDiagnosisLevel2);
         </script>
     </div>
 </body>

@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
-import glob
 import json
 from utils.oncotree import get_l1_l2_l3_oncotree_data
 from utils.diagnosis_rules import DIAGNOSIS_DROPDOWN_RULES
