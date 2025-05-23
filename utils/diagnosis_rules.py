@@ -11,7 +11,7 @@ DIAGNOSIS_DROPDOWN_RULES = {
             },
             {
                 'label': 'MGMT Promoter Status',
-                'name': 'mgmt_promoter_status',
+                'name': 'mgmt_promotor_status_key',
                 'values': ['Methylated', 'Unmethylated']
             }
         ]
@@ -20,7 +20,7 @@ DIAGNOSIS_DROPDOWN_RULES = {
         'dropdowns': [
             {
                 'label': 'MMR Status',
-                'name': 'mmr_status',
+                'name': 'mmr_status_key',
                 'values': [
                     'Proficient (MMR-P / MSS)',
                     'Deficient (MMR-D / MSI-H)'
@@ -33,22 +33,22 @@ DIAGNOSIS_DROPDOWN_RULES = {
         'dropdowns': [
             {
                 'label': 'HER2 Status',
-                'name': 'her2_status',
+                'name': 'her2_status_key',
                 'values': ['Positive', 'Negative', 'Unknown']
             },
             {
                 'label': 'ER Status',
-                'name': 'er_status',
+                'name': 'er_status_key',
                 'values': ['Positive', 'Negative', 'Unknown']
             },
             {
                 'label': 'PR Status',
-                'name': 'pr_status',
+                'name': 'pr_status_key',
                 'values': ['Positive', 'Negative', 'Unknown']
             },
             {
                 'label': 'PDL1 Status',
-                'name': 'pdl1_status',
+                'name': 'pdl1_status_key',
                 'values': ['High','Low']
             }
         ]

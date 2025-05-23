@@ -5,10 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patient Data</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        form { max-width: 800px; margin: auto; }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 0;
+        }
+        .banner {
+            background-color: #ffffff;
+            padding: 15px 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .banner img {
+            height: 80px;
+            width: auto;
+        }
+        .content {
+            margin: 40px;
+        }
+        form { 
+            max-width: 800px; 
+            margin: auto; 
+        }
         .form-table {
             width: 100%;
+            min-width: 1000px;
             border-collapse: collapse;
         }
         .form-table td {
@@ -33,7 +56,10 @@
             max-width: 300px;
             box-sizing: border-box;
         }
-        button { margin-top: 15px; padding: 10px 20px; }
+        button { 
+            margin-top: 15px; 
+            padding: 10px 20px; 
+        }
         .flash { 
             color: #2c5282;
             margin: 20px auto;
@@ -55,11 +81,23 @@
             color: #4a5568;
             display: block;
         }
-        h2 { text-align: center; }
-        h3 { text-align: left; }
-        .section { margin-bottom: 30px; }
-        .required { color: red; margin-right: 3px; }
-        .conditional-field { display: none; }
+        h2 { 
+            text-align: center; 
+            margin-top: 0;
+        }
+        h3 { 
+            text-align: left; 
+        }
+        .section { 
+            margin-bottom: 30px; 
+        }
+        .required { 
+            color: red; 
+            margin-right: 3px; 
+        }
+        .conditional-field { 
+            display: none; 
+        }
         .file-list {
             margin-top: 10px;
             max-height: 150px;
@@ -83,375 +121,602 @@
             cursor: pointer;
             margin-left: 10px;
         }
+        .btn {
+            background-color: #4a5568;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #2d3748;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .file-upload-btn {
+            background-color: #4a5568;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+            transition: background-color 0.3s;
+            font-size: 14px;
+        }
+        .file-upload-btn:hover {
+            background-color: #2d3748;
+        }
+        .submit-btn {
+            background-color: #2b6cb0;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: block;
+            margin: 30px auto;
+            min-width: 200px;
+        }
+        .submit-btn:hover {
+            background-color: #2c5282;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .submit-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .message {
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+        .message.info {
+            background-color: #ebf8ff;
+            color: #2c5282;
+            border: 1px solid #bee3f8;
+        }
+        .message.error {
+            background-color: #fff5f5;
+            color: #c53030;
+            border: 1px solid #feb2b2;
+        }
+        .diagnosis-container {
+            display: block;
+            gap: 0;
+            align-items: flex-start;
+            margin: 0;
+        }
+        .diagnosis-hierarchy {
+            margin: 0 0 0 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            display: none;
+            font-size: 13px;
+            min-width: 300px;
+        }
+        .diagnosis-select {
+            flex: 1;
+        }
+        .toggle-hierarchy {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 10px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            text-align: left;
+            font-size: 14px;
+            color: #4a5568;
+        }
+        .toggle-hierarchy:hover {
+            background-color: #edf2f7;
+        }
+        .toggle-hierarchy .arrow {
+            transition: transform 0.3s ease;
+        }
+        .toggle-hierarchy.expanded .arrow {
+            transform: rotate(180deg);
+        }
+        .hierarchy-content {
+            display: none;
+            margin-top: 10px;
+        }
+        .hierarchy-content.expanded {
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <h2>Patient Data</h2>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="flash">
-            <span class="patient-id">{{ messages[0].split('\n')[0] }}</span>
-            <span class="reference-note">{{ messages[0].split('\n')[1] }}</span>
-        </div>
-      {% endif %}
-    {% endwith %}
-    <form method="post" enctype="multipart/form-data">
-        <div class="section">
-            <h3>Clinical Data</h3>
-            <table class="form-table">
-                <tr>
-                    <td><label for="gender"><span class="required">*</span>Gender:</label></td>
-                    <td>
-                        <select id="gender" name="gender" required>
-                            <option value="">Select</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </td>
-                </tr>
+    <div class="banner">
+        <img src="{{ url_for('static', filename='images/matchminer_hkumed_logo.png') }}" alt="MatchMiner HKUMed Logo">
+    </div>
+    <div class="content">
+        <h2>Patient Data</h2>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="flash">
+                <span class="patient-id">{{ messages[0].split('\n')[0] }}</span>
+                <span class="reference-note">{{ messages[0].split('\n')[1] }}</span>
+            </div>
+          {% endif %}
+        {% endwith %}
+        <form method="post" enctype="multipart/form-data">
+            <div class="section">
+                <h3>Clinical Data</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="gender"><span class="required">*</span>Gender:</label></td>
+                        <td colspan="2">
+                            <select id="gender" name="gender" required>
+                                <option value="">Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </td>
+                    </tr>
 
-                <tr>
-                    <td><label for="age"><span class="required">*</span>Age:</label></td>
-                    <td><input type="number" id="age" name="age" min="0" required></td>
-                </tr>
+                    <tr>
+                        <td><label for="age"><span class="required">*</span>Age:</label></td>
+                        <td colspan="2"><input type="number" id="age" name="age" min="0" required></td>
+                    </tr>
 
-                <tr>
-                    <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
-                    <td>
-                        <select id="diagnosis_level1" name="diagnosis_level1" required onchange="updateDiagnosisLevel2()">
-                            <option value="">Select Level 1</option>
-                            {% for level1 in level1_list %}
-                            <option value="{{ level1 }}">{{ level1 }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
-                </tr>
+                    <tr>
+                        <td><label for="report_date"><span class="required">*</span>Report Date:</label></td>
+                        <td colspan="2"><input type="date" id="report_date" name="report_date" required></td>
+                    </tr>
 
-                <tr>
-                    <td><label for="diagnosis_level2"><span class="required">*</span>Diagnosis Level 2:</label></td>
-                    <td>
-                        <select id="diagnosis_level2" name="diagnosis_level2" required onchange="updateDiagnosisLevel3()">
-                            <option value="">Select Level 2</option>
-                        </select>
-                    </td>
-                </tr>
+                    <tr>
+                        <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
+                        <td style="width: 260px;">
+                            <select id="diagnosis_level1" name="diagnosis_level1" required onchange="updateDiagnosisLevel2()">
+                                <option value="">Select Level 1</option>
+                                {% for level1 in level1_list %}
+                                <option value="{{ level1 }}">{{ level1 }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td style="width: 1px;">
+                            <div id="diagnosis-hierarchy" class="diagnosis-hierarchy">
+                                <button type="button" class="toggle-hierarchy" onclick="toggleHierarchy()">
+                                    <span>Sub-levels of selected diagnosis</span>
+                                    <span class="arrow">▼</span>
+                                </button>
+                                <div class="hierarchy-content">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Level 2</th>
+                                                <th>Level 3</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="diagnosis-hierarchy-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
 
-                <tr>
-                    <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
-                    <td>
-                        <select id="diagnosis_level3" name="diagnosis_level3">
-                            <option value="">Select Level 3 (Optional)</option>
-                        </select>
-                    </td>
-                </tr>
+                    <tr>
+                        <td><label for="diagnosis_level2"><span class="required">*</span>Diagnosis Level 2:</label></td>
+                        <td colspan="2">
+                            <select id="diagnosis_level2" name="diagnosis_level2" required onchange="updateDiagnosisLevel3()">
+                                <option value="">Select Level 2</option>
+                            </select>
+                        </td>
+                    </tr>
 
-                <tr>
-                    <td colspan="2">
-                        <button type="button" class="btn btn-secondary" onclick="showAdditionalFields()">
-                            Display Additional Fields
-                        </button>
-                    </td>
-                </tr>
+                    <tr>
+                        <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
+                        <td colspan="2">
+                            <select id="diagnosis_level3" name="diagnosis_level3">
+                                <option value="">Select Level 3 (Optional)</option>
+                            </select>
+                        </td>
+                    </tr>
 
-                <!-- Container for dynamic diagnosis-specific dropdowns -->
-                <tr id="diagnosis-specific-dropdowns-row" style="display: none;">
-                    <td colspan="2">
-                        <div id="diagnosis-specific-dropdowns"></div>
-                    </td>
-                </tr>
+                    <tr>
+                        <td colspan="2">
+                            <button type="button" class="btn btn-secondary" onclick="showAdditionalFields()">
+                                Display Additional Fields
+                            </button>
+                            <div id="no-fields-message" class="message info" style="display: none;">
+                                No additional fields available for this diagnosis
+                            </div>
+                        </td>
+                    </tr>
 
-                <tr>
-                    <td><label for="report_date"><span class="required">*</span>Report Date:</label></td>
-                    <td><input type="date" id="report_date" name="report_date" required></td>
-                </tr>
+                    <!-- Container for dynamic diagnosis-specific dropdowns -->
+                    <tr id="diagnosis-specific-dropdowns-row" style="display: none;">
+                        <td colspan="2">
+                            <div id="diagnosis-specific-dropdowns"></div>
+                        </td>
+                    </tr>
 
-                <tr>
-                    <td><label for="tumor_mutational_burden">Tumor Mutational Burden per Megabase:</label></td>
-                    <td><input type="number" step="any" id="tumor_mutational_burden" name="tumor_mutational_burden"></td>
-                </tr>
+                    <tr>
+                        <td><label for="tumor_mutational_burden">Tumor Mutational Burden per Megabase:</label></td>
+                        <td><input type="number" step="any" id="tumor_mutational_burden" name="tumor_mutational_burden"></td>
+                    </tr>
 
-                <!-- Breast Cancer specific fields -->
-                <tr class="conditional-field breast-cancer-field">
-                    <td><label for="pdl1_status">PDL1 Status:</label></td>
-                    <td>
-                        <select id="pdl1_status" name="pdl1_status">
-                            <option value="">Select</option>
-                            <option value="High">High</option>
-                            <option value="Low">Low</option>
-                        </select>
-                    </td>
-                </tr>
+                    <!-- Breast Cancer specific fields -->
+                    <tr class="conditional-field breast-cancer-field">
+                        <td><label for="pdl1_status">PDL1 Status:</label></td>
+                        <td>
+                            <select id="pdl1_status" name="pdl1_status">
+                                <option value="">Select</option>
+                                <option value="High">High</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </td>
+                    </tr>
 
-                <tr class="conditional-field breast-cancer-field">
-                    <td><label for="her2_status">HER2 Status:</label></td>
-                    <td>
-                        <select id="her2_status" name="her2_status">
-                            <option value="">Select</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </td>
-                </tr>
+                    <tr class="conditional-field breast-cancer-field">
+                        <td><label for="her2_status">HER2 Status:</label></td>
+                        <td>
+                            <select id="her2_status" name="her2_status">
+                                <option value="">Select</option>
+                                <option value="Positive">Positive</option>
+                                <option value="Negative">Negative</option>
+                            </select>
+                        </td>
+                    </tr>
 
-                <tr class="conditional-field breast-cancer-field">
-                    <td><label for="pr_status">PR Status:</label></td>
-                    <td>
-                        <select id="pr_status" name="pr_status">
-                            <option value="">Select</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </td>
-                </tr>
+                    <tr class="conditional-field breast-cancer-field">
+                        <td><label for="pr_status">PR Status:</label></td>
+                        <td>
+                            <select id="pr_status" name="pr_status">
+                                <option value="">Select</option>
+                                <option value="Positive">Positive</option>
+                                <option value="Negative">Negative</option>
+                            </select>
+                        </td>
+                    </tr>
 
-                <tr class="conditional-field breast-cancer-field">
-                    <td><label for="er_status">ER Status:</label></td>
-                    <td>
-                        <select id="er_status" name="er_status">
-                            <option value="">Select</option>
-                            <option value="Positive">Positive</option>
-                            <option value="Negative">Negative</option>
-                        </select>
-                    </td>
-                </tr>
+                    <tr class="conditional-field breast-cancer-field">
+                        <td><label for="er_status">ER Status:</label></td>
+                        <td>
+                            <select id="er_status" name="er_status">
+                                <option value="">Select</option>
+                                <option value="Positive">Positive</option>
+                                <option value="Negative">Negative</option>
+                            </select>
+                        </td>
+                    </tr>
 
-                <!-- Brain Cancer specific fields -->
-                <tr class="conditional-field brain-cancer-field">
-                    <td><label for="mgmt_promoter_status">MGMT Promoter Status:</label></td>
-                    <td>
-                        <select id="mgmt_promoter_status" name="mgmt_promoter_status">
-                            <option value="">Select</option>
-                            <option value="Methylated">Methylated</option>
-                            <option value="Unmethylated">Unmethylated</option>
-                        </select>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        <div class="section">
-            <h3>Additional Information</h3>
-            <table class="form-table">
-                <tr>
-                    <td><label for="description">Description:</label></td>
-                    <td>
-                        <textarea id="description" name="description" rows="6" style="width: 100%; max-width: 500px;"></textarea>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        <div class="section">
-            <h3>Genomic Data</h3>
-            <table class="form-table">
-                <tr>
-                    <td><label for="genomic_images">Upload Genomic Data Images:</label></td>
-                    <td>
-                        <input type="file" id="genomic_images" name="genomic_images" accept="image/*" multiple onchange="updateFileList(this)">
-                        <div id="fileList" class="file-list"></div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        <button type="submit">Submit</button>
-    </form>
+                    <!-- Brain Cancer specific fields -->
+                    <tr class="conditional-field brain-cancer-field">
+                        <td><label for="mgmt_promoter_status">MGMT Promoter Status:</label></td>
+                        <td>
+                            <select id="mgmt_promoter_status" name="mgmt_promoter_status">
+                                <option value="">Select</option>
+                                <option value="Methylated">Methylated</option>
+                                <option value="Unmethylated">Unmethylated</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="section">
+                <h3>Additional Information</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="description">Description:</label></td>
+                        <td>
+                            <textarea id="description" name="description" rows="6" style="width: 100%; max-width: 500px;"></textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="section">
+                <h3>Genomic Data</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="genomic_images">Upload Genomic Data Images:</label></td>
+                        <td>
+                            <label for="genomic_images" class="file-upload-btn">Choose Files</label>
+                            <input type="file" id="genomic_images" name="genomic_images" accept="image/*" multiple onchange="updateFileList(this)">
+                            <div id="fileList" class="file-list"></div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <button type="submit" class="submit-btn">Submit</button>
+        </form>
 
-    <script>
-        function updateFormFields() {
-            const diagnosis = document.getElementById('diagnosis_level1').value;
-            
-            // Hide all conditional fields first
-            document.querySelectorAll('.conditional-field').forEach(field => {
-                field.style.display = 'none';
-            });
-
-            // Show relevant fields based on diagnosis
-            if (diagnosis === 'Breast Cancer') {
-                document.querySelectorAll('.breast-cancer-field').forEach(field => {
-                    field.style.display = 'table-row';
+        <script>
+            function updateFormFields() {
+                const diagnosis = document.getElementById('diagnosis_level1').value;
+                
+                // Hide all conditional fields first
+                document.querySelectorAll('.conditional-field').forEach(field => {
+                    field.style.display = 'none';
                 });
-            } else if (diagnosis === 'Brain Cancer') {
-                document.querySelectorAll('.brain-cancer-field').forEach(field => {
-                    field.style.display = 'table-row';
-                });
-            }
-        }
 
-        function clearAdditionalFields() {
-            const container = document.getElementById('diagnosis-specific-dropdowns');
-            container.innerHTML = '';
-            document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
-        }
-
-        function updateDiagnosisLevel2() {
-            const level1 = document.getElementById('diagnosis_level1').value;
-            const level2Select = document.getElementById('diagnosis_level2');
-            const level3Select = document.getElementById('diagnosis_level3');
-            
-            // Reset level2 and level3
-            level2Select.innerHTML = '<option value="">Select Level 2</option>';
-            level3Select.innerHTML = '<option value="">Select Level 3</option>';
-            
-            // Clear additional fields when diagnosis changes
-            clearAdditionalFields();
-            
-            if (level1) {
-                fetch(`/get_level2/${encodeURIComponent(level1)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(level2 => {
-                            const option = document.createElement('option');
-                            option.value = level2;
-                            option.textContent = level2;
-                            level2Select.appendChild(option);
-                        });
-                    })
-                    .catch(error => console.error('Error:', error));
-            }
-        }
-
-        function updateDiagnosisLevel3() {
-            const level2 = document.getElementById('diagnosis_level2').value;
-            const level3Select = document.getElementById('diagnosis_level3');
-            
-            // Reset level3
-            level3Select.innerHTML = '<option value="">Select Level 3</option>';
-            
-            // Clear additional fields when diagnosis changes
-            clearAdditionalFields();
-            
-            if (level2) {
-                fetch(`/get_level3/${encodeURIComponent(level2)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(level3 => {
-                            const option = document.createElement('option');
-                            option.value = level3;
-                            option.textContent = level3;
-                            level3Select.appendChild(option);
-                        });
-                    })
-                    .catch(error => console.error('Error:', error));
-            }
-        }
-
-        function showAdditionalFields() {
-            const level1 = document.getElementById('diagnosis_level1').value;
-            const level2 = document.getElementById('diagnosis_level2').value;
-            const level3 = document.getElementById('diagnosis_level3').value;
-            
-            // Clear any existing dynamic dropdowns
-            const container = document.getElementById('diagnosis-specific-dropdowns');
-            container.innerHTML = '';
-            
-            // Build diagnosis string based on available levels
-            let diagnosis = '';
-            if (level1) {
-                diagnosis = level1;
-                if (level2) {
-                    diagnosis += ' > ' + level2;
-                    if (level3) {
-                        diagnosis += ' > ' + level3;
-                    }
+                // Show relevant fields based on diagnosis
+                if (diagnosis === 'Breast Cancer') {
+                    document.querySelectorAll('.breast-cancer-field').forEach(field => {
+                        field.style.display = 'table-row';
+                    });
+                } else if (diagnosis === 'Brain Cancer') {
+                    document.querySelectorAll('.brain-cancer-field').forEach(field => {
+                        field.style.display = 'table-row';
+                    });
                 }
             }
-            
-            if (!diagnosis) {
-                alert('Please select at least Level 1 diagnosis');
-                return;
+
+            function clearAdditionalFields() {
+                const container = document.getElementById('diagnosis-specific-dropdowns');
+                container.innerHTML = '';
+                document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
             }
-            
-            fetch(`/get_diagnosis_dropdowns/${encodeURIComponent(diagnosis)}`)
-                .then(response => response.json())
-                .then(dropdowns => {
-                    if (dropdowns.length > 0) {
-                        // Create a table for the dropdowns
-                        const dropdownTable = document.createElement('table');
-                        dropdownTable.className = 'form-table';
-                        
-                        dropdowns.forEach(dropdown => {
-                            const dropdownRow = document.createElement('tr');
-                            
-                            const labelCell = document.createElement('td');
-                            const label = document.createElement('label');
-                            label.htmlFor = dropdown.name;
-                            label.textContent = dropdown.label;
-                            labelCell.appendChild(label);
-                            
-                            const selectCell = document.createElement('td');
-                            const select = document.createElement('select');
-                            select.className = 'form-control';
-                            select.name = dropdown.name;
-                            select.id = dropdown.name;
-                            
-                            // Add empty option
-                            const emptyOption = document.createElement('option');
-                            emptyOption.value = '';
-                            emptyOption.textContent = 'Select ' + dropdown.label;
-                            select.appendChild(emptyOption);
-                            
-                            // Add value options
-                            dropdown.values.forEach(value => {
+
+            function toggleHierarchy() {
+                const button = document.querySelector('.toggle-hierarchy');
+                const content = document.querySelector('.hierarchy-content');
+                button.classList.toggle('expanded');
+                content.classList.toggle('expanded');
+            }
+
+            function updateDiagnosisLevel2() {
+                const level1 = document.getElementById('diagnosis_level1').value;
+                const level2Select = document.getElementById('diagnosis_level2');
+                const level3Select = document.getElementById('diagnosis_level3');
+                const hierarchyDiv = document.getElementById('diagnosis-hierarchy');
+                const hierarchyBody = document.getElementById('diagnosis-hierarchy-body');
+                const toggleButton = document.querySelector('.toggle-hierarchy');
+                const toggleButtonLabel = toggleButton.querySelector('span');
+                const content = document.querySelector('.hierarchy-content');
+                
+                // Set dynamic button label
+                if (level1) {
+                    toggleButtonLabel.textContent = `Diagnosis tree for ${level1}`;
+                } else {
+                    toggleButtonLabel.textContent = 'Diagnosis tree';
+                }
+                
+                // Reset level2 and level3
+                level2Select.innerHTML = '<option value="">Select Level 2</option>';
+                level3Select.innerHTML = '<option value="">Select Level 3</option>';
+                
+                // Clear additional fields when diagnosis changes
+                clearAdditionalFields();
+                
+                if (level1) {
+                    // Fetch and populate the hierarchy table
+                    fetch(`/get_level2/${encodeURIComponent(level1)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Populate level2 dropdown
+                            data.forEach(level2 => {
                                 const option = document.createElement('option');
-                                option.value = value;
-                                option.textContent = value;
-                                select.appendChild(option);
+                                option.value = level2;
+                                option.textContent = level2;
+                                level2Select.appendChild(option);
+                            });
+
+                            // Show hierarchy container
+                            hierarchyDiv.style.display = 'block';
+                            // Clear hierarchy table body ONCE here
+                            hierarchyBody.innerHTML = '';
+                            
+                            // Reset toggle state
+                            toggleButton.classList.remove('expanded');
+                            content.classList.remove('expanded');
+
+                            // For each level2, fetch its level3 options
+                            const level2Promises = data.map(level2 => 
+                                fetch(`/get_level3/${encodeURIComponent(level2)}`)
+                                    .then(response => response.json())
+                                    .then(level3Data => ({
+                                        level2,
+                                        level3Data
+                                    }))
+                            );
+
+                            Promise.all(level2Promises)
+                                .then(results => {
+                                    // Only append rows after clearing, and do it once
+                                    results.forEach(({level2, level3Data}) => {
+                                        const row = document.createElement('tr');
+                                        
+                                        const level2Cell = document.createElement('td');
+                                        level2Cell.textContent = level2;
+                                        row.appendChild(level2Cell);
+                                        
+                                        const level3Cell = document.createElement('td');
+                                        if (level3Data.length > 0) {
+                                            level3Cell.textContent = level3Data.join(', ');
+                                        } else {
+                                            level3Cell.textContent = '-';
+                                        }
+                                        row.appendChild(level3Cell);
+                                        
+                                        hierarchyBody.appendChild(row);
+                                    });
+                                })
+                                .catch(error => {
+                                    console.error('Error loading level 3 data:', error);
+                                    hierarchyBody.innerHTML = '<tr><td colspan="2">Error loading diagnosis hierarchy</td></tr>';
+                                });
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            hierarchyDiv.style.display = 'none';
+                        });
+                } else {
+                    hierarchyDiv.style.display = 'none';
+                    // Also clear hierarchy table body if no level1 selected
+                    hierarchyBody.innerHTML = '';
+                }
+            }
+
+            function updateDiagnosisLevel3() {
+                const level2 = document.getElementById('diagnosis_level2').value;
+                const level3Select = document.getElementById('diagnosis_level3');
+                
+                // Reset level3
+                level3Select.innerHTML = '<option value="">Select Level 3</option>';
+                
+                // Clear additional fields when diagnosis changes
+                clearAdditionalFields();
+                
+                if (level2) {
+                    fetch(`/get_level3/${encodeURIComponent(level2)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            data.forEach(level3 => {
+                                const option = document.createElement('option');
+                                option.value = level3;
+                                option.textContent = level3;
+                                level3Select.appendChild(option);
+                            });
+                        })
+                        .catch(error => console.error('Error:', error));
+                }
+            }
+
+            function showAdditionalFields() {
+                const level1 = document.getElementById('diagnosis_level1').value;
+                const level2 = document.getElementById('diagnosis_level2').value;
+                const level3 = document.getElementById('diagnosis_level3').value;
+                
+                // Clear any existing dynamic dropdowns
+                const container = document.getElementById('diagnosis-specific-dropdowns');
+                container.innerHTML = '';
+                
+                // Hide the message initially
+                const messageDiv = document.getElementById('no-fields-message');
+                messageDiv.style.display = 'none';
+                
+                // Build diagnosis string based on available levels
+                let diagnosis = '';
+                if (level1) {
+                    diagnosis = level1;
+                    if (level2) {
+                        diagnosis += ' > ' + level2;
+                        if (level3) {
+                            diagnosis += ' > ' + level3;
+                        }
+                    }
+                }
+                
+                if (!diagnosis) {
+                    messageDiv.textContent = 'Please select at least Level 1 diagnosis';
+                    messageDiv.className = 'message error';
+                    messageDiv.style.display = 'block';
+                    return;
+                }
+                
+                fetch(`/get_additional_diagnosis_dropdowns/${encodeURIComponent(diagnosis)}`)
+                    .then(response => response.json())
+                    .then(dropdowns => {
+                        if (dropdowns.length > 0) {
+                            // Create a table for the dropdowns
+                            const dropdownTable = document.createElement('table');
+                            dropdownTable.className = 'form-table';
+                            
+                            dropdowns.forEach(dropdown => {
+                                const dropdownRow = document.createElement('tr');
+                                
+                                const labelCell = document.createElement('td');
+                                const label = document.createElement('label');
+                                label.htmlFor = dropdown.name;
+                                label.textContent = dropdown.label;
+                                labelCell.appendChild(label);
+                                
+                                const selectCell = document.createElement('td');
+                                const select = document.createElement('select');
+                                select.className = 'form-control';
+                                select.name = dropdown.name;
+                                select.id = dropdown.name;
+                                
+                                // Add empty option
+                                const emptyOption = document.createElement('option');
+                                emptyOption.value = '';
+                                emptyOption.textContent = 'Select ' + dropdown.label;
+                                select.appendChild(emptyOption);
+                                
+                                // Add value options
+                                dropdown.values.forEach(value => {
+                                    const option = document.createElement('option');
+                                    option.value = value;
+                                    option.textContent = value;
+                                    select.appendChild(option);
+                                });
+                                
+                                selectCell.appendChild(select);
+                                dropdownRow.appendChild(labelCell);
+                                dropdownRow.appendChild(selectCell);
+                                dropdownTable.appendChild(dropdownRow);
                             });
                             
-                            selectCell.appendChild(select);
-                            dropdownRow.appendChild(labelCell);
-                            dropdownRow.appendChild(selectCell);
-                            dropdownTable.appendChild(dropdownRow);
-                        });
-                        
-                        container.appendChild(dropdownTable);
-                        document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'table-row';
-                    } else {
-                        alert('No additional fields available for this diagnosis');
-                        document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error loading additional fields');
-                });
-        }
-
-        function updateFileList(input) {
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = '';
-            
-            Array.from(input.files).forEach((file, index) => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                fileItem.innerHTML = `
-                    <span>${file.name}</span>
-                    <span class="remove-file" onclick="removeFile(${index})">×</span>
-                `;
-                fileList.appendChild(fileItem);
-            });
-        }
-
-        function removeFile(index) {
-            const input = document.getElementById('genomic_images');
-            const dt = new DataTransfer();
-            const files = input.files;
-
-            for (let i = 0; i < files.length; i++) {
-                if (i !== index) {
-                    dt.items.add(files[i]);
-                }
+                            container.appendChild(dropdownTable);
+                            document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'table-row';
+                        } else {
+                            messageDiv.textContent = 'No additional fields available for this diagnosis';
+                            messageDiv.className = 'message info';
+                            messageDiv.style.display = 'block';
+                            document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        messageDiv.textContent = 'Error loading additional fields';
+                        messageDiv.className = 'message error';
+                        messageDiv.style.display = 'block';
+                    });
             }
 
-            input.files = dt.files;
-            updateFileList(input);
-        }
+            function updateFileList(input) {
+                const fileList = document.getElementById('fileList');
+                fileList.innerHTML = '';
+                
+                Array.from(input.files).forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <span>${file.name}</span>
+                        <span class="remove-file" onclick="removeFile(${index})">×</span>
+                    `;
+                    fileList.appendChild(fileItem);
+                });
+            }
 
-        // Initialize form fields on page load
-        document.addEventListener('DOMContentLoaded', updateFormFields);
+            function removeFile(index) {
+                const input = document.getElementById('genomic_images');
+                const dt = new DataTransfer();
+                const files = input.files;
 
-        // Add event listeners
-        document.getElementById('diagnosis_level1').addEventListener('change', updateDiagnosisLevel2);
-        document.getElementById('diagnosis_level2').addEventListener('change', updateDiagnosisLevel3);
-    </script>
+                for (let i = 0; i < files.length; i++) {
+                    if (i !== index) {
+                        dt.items.add(files[i]);
+                    }
+                }
+
+                input.files = dt.files;
+                updateFileList(input);
+            }
+
+            // Initialize form fields on page load
+            document.addEventListener('DOMContentLoaded', updateFormFields);
+
+            // Add event listener only for diagnosis_level2 (level1 uses HTML onchange)
+            document.getElementById('diagnosis_level2').addEventListener('change', updateDiagnosisLevel3);
+        </script>
+    </div>
 </body>
 </html> 

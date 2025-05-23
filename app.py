@@ -7,6 +7,10 @@ import json
 from utils.oncotree import get_l1_l2_l3_oncotree_data
 from utils.diagnosis_rules import DIAGNOSIS_DROPDOWN_RULES
 from urllib.parse import unquote
+from patient_data.patient_clinical_data_config import patient_clinical_schema_keys
+import subprocess
+from loguru import logger
+import threading
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for flash messages
@@ -26,10 +30,8 @@ level1_list = sorted(list(level1_list))
 level1_to_level2 = {k: sorted(list(v)) for k, v in level1_to_level2.items()}
 level2_to_level3 = {k: sorted(list(v)) for k, v in level2_to_level3.items()}
 
-# Debug print to verify data
-print("Available Level 1 values:", level1_list)
-print("Level 1 to Level 2 mapping:", level1_to_level2)
-print("Level 2 to Level 3 mapping:", level2_to_level3)
+# Set up Loguru to log to a file (e.g., logs/app.log)
+logger.add("logs/app.log", rotation="10 MB", retention="10 days", enqueue=True)
 
 def load_sequence_counter():
     """Load the sequence counter from file"""
@@ -85,7 +87,6 @@ def get_level2(level1):
     # Decode the URL-encoded level1 value
     level1 = unquote(level1)
     print(f"Received request for level1: {level1}")  # Debug print
-    print(f"Available keys: {list(level1_to_level2.keys())}")  # Debug print
     return jsonify(level1_to_level2.get(level1, []))
 
 @app.route('/get_level3/<path:level2>')
@@ -94,11 +95,10 @@ def get_level3(level2):
     # Decode the URL-encoded level2 value
     level2 = unquote(level2)
     print(f"Received request for level2: {level2}")  # Debug print
-    print(f"Available keys: {list(level2_to_level3.keys())}")  # Debug print
     return jsonify(level2_to_level3.get(level2, []))
 
-@app.route('/get_diagnosis_dropdowns/<path:diagnosis>')
-def get_diagnosis_dropdowns(diagnosis):
+@app.route('/get_additional_diagnosis_dropdowns/<path:diagnosis>')
+def get_additional_diagnosis_dropdowns(diagnosis):
     """API endpoint to get dropdown options for a specific diagnosis"""
     diagnosis = unquote(diagnosis)
     print(f"Received request for diagnosis: {diagnosis}")  # Debug print
@@ -156,8 +156,9 @@ def index():
         for field in all_diagnosis_fields:
             value = request.form.get(field, '')
             if value:  # Only include non-empty values
-                # Convert field name to uppercase and replace underscores with spaces
-                field_name = field.upper().replace('_', ' ')
+                # Use mapping if available, otherwise use the field as is
+                field_name = patient_clinical_schema_keys.get(field, field)
+                #field_name = field_name.upper().replace('_', ' ')
                 diagnosis_fields[field_name] = value
 
         description = request.form.get('description', '')
@@ -182,13 +183,14 @@ def index():
         data_file = f"{unique_id}.txt"
         data_file_path = os.path.abspath(os.path.join(TEXT_FOLDER, data_file))
         with open(data_file_path, 'w', encoding='utf-8') as f:
-            f.write(f"SAMPLE_ID: {unique_id}\n")
-            f.write(f"MRN: {unique_id}\n")
-            f.write(f"GENDER: {gender}\n")
-            f.write(f"AGE: {age}\n")
-            f.write(f"DIAGNOSIS: {diagnosis}\n")
-            f.write(f"REPORT_DATE: {report_date}\n")
-            f.write(f"TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE: {tumor_mutational_burden}\n")
+            f.write(f"{patient_clinical_schema_keys['sample_id_key']}: {unique_id}\n")
+            f.write(f"{patient_clinical_schema_keys['mrn_key']}: {unique_id}\n")
+            f.write(f"{patient_clinical_schema_keys['gender_key']}: {gender}\n")
+            f.write(f"{patient_clinical_schema_keys['age_key'] if 'age_key' in patient_clinical_schema_keys else 'AGE'}: {age}\n")
+            f.write(f"{patient_clinical_schema_keys['oncotree_diag_key'] if 'oncotree_diag_key' in patient_clinical_schema_keys else 'DIAGNOSIS'}: {diagnosis}\n")
+            f.write(f"{patient_clinical_schema_keys['oncotree_diag_name_key'] if 'oncotree_diag_name_key' in patient_clinical_schema_keys else 'DIAGNOSIS_NAME'}: {diagnosis}\n")
+            f.write(f"{patient_clinical_schema_keys['report_date_key']}: {report_date}\n")
+            f.write(f"{patient_clinical_schema_keys['tmb_key']}: {tumor_mutational_burden}\n")
             
             # Write all diagnosis-specific fields
             for field_name, value in sorted(diagnosis_fields.items()):
@@ -205,6 +207,19 @@ def index():
 
         # Format the message with Patient ID and reference note
         flash(f"Patient ID: {unique_id}\nPlease save the patient ID for future reference")
+
+        # Start the clinical data script in the background
+        logger.info(f"Starting get_patient_clinical_data.py for file: {data_file}")
+        process = subprocess.Popen(
+            ['python', 'patient_data/get_patient_clinical_data.py', data_file],
+            stdout=open('logs/get_patient_clinical_data.log', 'a'),
+            stderr=subprocess.STDOUT
+        )
+        def log_on_finish(proc, data_file):
+            proc.wait()
+            logger.info(f"get_patient_clinical_data.py finished for file: {data_file}")
+        threading.Thread(target=log_on_finish, args=(process, data_file), daemon=True).start()
+
         return redirect(url_for('index'))
     return render_template('index.html', level1_list=level1_list)
 
