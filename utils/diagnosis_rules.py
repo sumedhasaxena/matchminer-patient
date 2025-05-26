@@ -45,7 +45,11 @@ DIAGNOSIS_DROPDOWN_RULES = {
                 'label': 'PR Status',
                 'name': 'pr_status_key',
                 'values': ['Positive', 'Negative', 'Unknown']
-            },
+            }
+        ]
+    },
+    'Non-Small Cell Lung Cancer': {
+        'dropdowns': [
             {
                 'label': 'PDL1 Status',
                 'name': 'pdl1_status_key',

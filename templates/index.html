@@ -33,6 +33,7 @@
             width: 100%;
             min-width: 1000px;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         .form-table td {
             padding: 8px 0;
@@ -202,6 +203,8 @@
             display: none;
             font-size: 13px;
             min-width: 300px;
+            max-width: 350px;
+            word-break: break-word;
         }
         .diagnosis-select {
             flex: 1;
@@ -236,6 +239,15 @@
         }
         .hierarchy-content.expanded {
             display: block;
+        }
+        #diagnosis-specific-dropdowns table.form-table {
+            width: 100%;
+            table-layout: auto;
+            min-width: 0;
+        }
+        #diagnosis-specific-dropdowns {
+            max-width: 600px;
+            overflow-x: auto;
         }
     </style>
 </head>
@@ -289,7 +301,7 @@
                                 {% endfor %}
                             </select>
                         </td>
-                        <td style="width: 1px;">
+                        <td style="width: 1px; max-width: 350px; vertical-align: top;">
                             <div id="diagnosis-hierarchy" class="diagnosis-hierarchy">
                                 <button type="button" class="toggle-hierarchy" onclick="toggleHierarchy()">
                                     <span>Sub-levels of selected diagnosis</span>
@@ -340,12 +352,7 @@
                         </td>
                     </tr>
 
-                    <!-- Container for dynamic diagnosis-specific dropdowns -->
-                    <tr id="diagnosis-specific-dropdowns-row" style="display: none;">
-                        <td colspan="2">
-                            <div id="diagnosis-specific-dropdowns"></div>
-                        </td>
-                    </tr>
+                    <tr id="diagnosis-specific-dropdowns-row" style="display: none;"></tr>
 
                     <tr>
                         <td><label for="tumor_mutational_burden">Tumor Mutational Burden per Megabase:</label></td>
@@ -508,9 +515,11 @@
                 const level2 = document.getElementById('diagnosis_level2').value;
                 const level3 = document.getElementById('diagnosis_level3').value;
                 
-                // Clear any existing dynamic dropdowns
-                const container = document.getElementById('diagnosis-specific-dropdowns');
-                container.innerHTML = '';
+                // Remove any existing dynamic dropdown rows
+                document.querySelectorAll('.dynamic-diagnosis-row').forEach(row => row.remove());
+                const formTable = document.querySelector('.form-table');
+                const insertAfter = document.getElementById('diagnosis-specific-dropdowns-row');
+                let lastInserted = insertAfter;
                 
                 // Hide the message initially
                 const messageDiv = document.getElementById('no-fields-message');
@@ -538,13 +547,11 @@
                 fetch(`/get_additional_diagnosis_dropdowns/${encodeURIComponent(diagnosis)}`)
                     .then(response => response.json())
                     .then(dropdowns => {
+                        // All code that uses 'dropdowns' is inside this block
                         if (dropdowns.length > 0) {
-                            // Create a table for the dropdowns
-                            const dropdownTable = document.createElement('table');
-                            dropdownTable.className = 'form-table';
-                            
                             dropdowns.forEach(dropdown => {
                                 const dropdownRow = document.createElement('tr');
+                                dropdownRow.classList.add('dynamic-diagnosis-row');
                                 
                                 const labelCell = document.createElement('td');
                                 const label = document.createElement('label');
@@ -553,6 +560,7 @@
                                 labelCell.appendChild(label);
                                 
                                 const selectCell = document.createElement('td');
+                                selectCell.colSpan = 2;
                                 const select = document.createElement('select');
                                 select.className = 'form-control';
                                 select.name = dropdown.name;
@@ -575,11 +583,10 @@
                                 selectCell.appendChild(select);
                                 dropdownRow.appendChild(labelCell);
                                 dropdownRow.appendChild(selectCell);
-                                dropdownTable.appendChild(dropdownRow);
+                                lastInserted.parentNode.insertBefore(dropdownRow, lastInserted.nextSibling);
+                                lastInserted = dropdownRow;
                             });
-                            
-                            container.appendChild(dropdownTable);
-                            document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'table-row';
+                            document.getElementById('diagnosis-specific-dropdowns-row').style.display = '';
                         } else {
                             messageDiv.textContent = 'No additional fields available for this diagnosis';
                             messageDiv.className = 'message info';
