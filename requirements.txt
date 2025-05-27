@@ -2,3 +2,8 @@ Flask>=2.0
 Werkzeug>=2.0
 loguru 
 requests
+biopython
+pandas
+pytorch
+pillow
+surya-ocr
