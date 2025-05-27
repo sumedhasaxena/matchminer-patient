@@ -11,6 +11,7 @@ import subprocess
 from loguru import logger
 import threading
 
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for flash messages
 
@@ -23,11 +24,12 @@ os.makedirs(TEXT_FOLDER, exist_ok=True)
 
 # Load OncoTree data at startup
 level1_list, level1_to_level2, level2_to_level3 = get_l1_l2_l3_oncotree_data()
-
 # Convert sets to sorted lists for consistent ordering
 level1_list = sorted(list(level1_list))
 level1_to_level2 = {k: sorted(list(v)) for k, v in level1_to_level2.items()}
 level2_to_level3 = {k: sorted(list(v)) for k, v in level2_to_level3.items()}
+
+
 
 # Set up Loguru to log to a file (e.g., logs/app.log)
 logger.add("logs/app.log", rotation="10 MB", retention="10 days", enqueue=True)
@@ -205,22 +207,68 @@ def index():
                 f.write(description)
 
         # Format the message with Patient ID and reference note
-        flash(f"Patient ID: {unique_id}\nPlease save the patient ID for future reference")
+        flash(f"MatchMiner ID: {unique_id}\nPatient data recorded successfully. Please save the MatchMiner ID for future reference")
 
         # Start the clinical data script in the background
-        logger.info(f"Starting get_patient_clinical_data.py for file: {data_file}")
-        process = subprocess.Popen(
-            ['python', 'patient_data/get_patient_clinical_data.py', data_file],
-            stdout=open('logs/get_patient_clinical_data.log', 'a'),
-            stderr=subprocess.STDOUT
+        run_script_in_background(
+            'patient_data/get_patient_clinical_data.py',
+            [data_file],
+            'logs/get_patient_clinical_data.log',
+            f"Starting get_patient_clinical_data.py for mm_id: {unique_id}",
+            f"get_patient_clinical_data.py finished for mm_id: {unique_id}"
         )
-        def log_on_finish(proc, data_file):
-            proc.wait()
-            logger.info(f"get_patient_clinical_data.py finished for file: {data_file}")
-        threading.Thread(target=log_on_finish, args=(process, data_file), daemon=True).start()
+
+        # Start OCR by passing all image filenames and unique_id in the background
+        run_chained_scripts(
+            'patient_data/surya_ocr_text_extract.py',
+            image_filenames + [unique_id],
+            'logs/ocr_text_extract.log',
+            f"Starting OCR for images: {image_filenames} with MMID: {unique_id}",
+            f"OCR finished for images: {image_filenames} with MMID: {unique_id}",
+            'patient_data/get_patient_genomic_data.py',
+            [f"{unique_id}.txt"],
+            'logs/get_patient_genomic_data.log',
+            f"Starting get_patient_genomic_data.py for MMID: {unique_id}",
+            f"get_patient_genomic_data.py finished for MMID: {unique_id}"
+        )
 
         return redirect(url_for('index'))
     return render_template('index.html', level1_list=level1_list)
 
+def run_script_in_background(script_path, args, log_file, start_msg, finish_msg):
+    def runner():
+        logger.info(start_msg)
+        process = subprocess.Popen(
+            ['python', script_path] + args,
+            stdout=open(log_file, 'a'),
+            stderr=subprocess.STDOUT
+        )
+        process.wait()
+        logger.info(finish_msg)
+    threading.Thread(target=runner, daemon=True).start()
+
+
+def run_chained_scripts(first_script, first_args, first_log, first_start_msg, first_finish_msg,
+                        second_script, second_args, second_log, second_start_msg, second_finish_msg):
+    def runner():
+        logger.info(first_start_msg)
+        process = subprocess.Popen(
+            ['python', first_script] + first_args,
+            stdout=open(first_log, 'a'),
+            stderr=subprocess.STDOUT
+        )
+        process.wait()
+        logger.info(first_finish_msg)
+        # Now run the second script
+        logger.info(second_start_msg)
+        process2 = subprocess.Popen(
+            ['python', second_script] + second_args,
+            stdout=open(second_log, 'a'),
+            stderr=subprocess.STDOUT
+        )
+        process2.wait()
+        logger.info(second_finish_msg)
+    threading.Thread(target=runner, daemon=True).start()
+
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(host='0.0.0.0', port=5000, debug=True) 
