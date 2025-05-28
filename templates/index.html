@@ -249,6 +249,24 @@
             max-width: 600px;
             overflow-x: auto;
         }
+        .advanced-toggle {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 16px;
+            color: #2b6cb0;
+            margin-bottom: 10px;
+            user-select: none;
+        }
+        .advanced-caret {
+            display: inline-block;
+            transition: transform 0.3s;
+            margin-right: 8px;
+            font-size: 20px;
+        }
+        .advanced-caret.expanded {
+            transform: rotate(90deg);
+        }
     </style>
 </head>
 <body>
@@ -292,65 +310,81 @@
                     </tr>
 
                     <tr>
-                        <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
-                        <td style="width: 260px;">
-                            <select id="diagnosis_level1" name="diagnosis_level1" required onchange="updateDiagnosisLevel2()">
-                                <option value="">Select Level 1</option>
-                                {% for level1 in level1_list %}
-                                <option value="{{ level1 }}">{{ level1 }}</option>
-                                {% endfor %}
-                            </select>
+                        <td><label for="diagnosis_free_text"><span class="required">*</span>Diagnosis (free text):</label></td>
+                        <td colspan="2"><input type="text" id="diagnosis_free_text" name="diagnosis_free_text" required></td>
+                    </tr>
+                    <!-- <tr>
+                        <td colspan="3">
+                            <button type="button" class="btn btn-secondary" onclick="toggleAdvancedDiagnosis()" style="margin-bottom: 10px;">Show Advanced Options</button>
                         </td>
-                        <td style="width: 1px; max-width: 350px; vertical-align: top;">
-                            <div id="diagnosis-hierarchy" class="diagnosis-hierarchy">
-                                <button type="button" class="toggle-hierarchy" onclick="toggleHierarchy()">
-                                    <span>Sub-levels of selected diagnosis</span>
-                                    <span class="arrow">▼</span>
-                                </button>
-                                <div class="hierarchy-content">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Level 2</th>
-                                                <th>Level 3</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="diagnosis-hierarchy-body">
-                                        </tbody>
-                                    </table>
+                    </tr> -->
+                    <tr>
+                        <td colspan="3">
+                            <div class="advanced-toggle" onclick="toggleAdvancedDiagnosis()">
+                                <span id="advanced-caret" class="advanced-caret">&#9654;</span>
+                                <span>Advanced Diagnosis Options</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tbody id="advanced-diagnosis-section" style="display: none;">
+                        <tr>
+                            <td><label for="diagnosis_level1">Diagnosis Level 1:</label></td>
+                            <td style="width: 260px;">
+                                <select id="diagnosis_level1" name="diagnosis_level1" onchange="updateDiagnosisLevel2();clearAdditionalFields()">
+                                    <option value="">Select Level 1</option>
+                                    {% for level1 in level1_list %}
+                                    <option value="{{ level1 }}">{{ level1 }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td style="width: 1px; max-width: 350px; vertical-align: top;">
+                                <div id="diagnosis-hierarchy" class="diagnosis-hierarchy">
+                                    <button type="button" class="toggle-hierarchy" onclick="toggleHierarchy()">
+                                        <span>Sub-levels of selected diagnosis</span>
+                                        <span class="arrow">▼</span>
+                                    </button>
+                                    <div class="hierarchy-content">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Level 2</th>
+                                                    <th>Level 3</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="diagnosis-hierarchy-body">
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td><label for="diagnosis_level2"><span class="required">*</span>Diagnosis Level 2:</label></td>
-                        <td colspan="2">
-                            <select id="diagnosis_level2" name="diagnosis_level2" required onchange="updateDiagnosisLevel3()">
-                                <option value="">Select Level 2</option>
-                            </select>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
-                        <td colspan="2">
-                            <select id="diagnosis_level3" name="diagnosis_level3">
-                                <option value="">Select Level 3 (Optional)</option>
-                            </select>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td colspan="2">
-                            <button type="button" class="btn btn-secondary" onclick="showAdditionalFields()">
-                                Display Additional Fields
-                            </button>
-                            <div id="no-fields-message" class="message info" style="display: none;">
-                                No additional fields available for this diagnosis
-                            </div>
-                        </td>
-                    </tr>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="diagnosis_level2">Diagnosis Level 2:</label></td>
+                            <td colspan="2">
+                                <select id="diagnosis_level2" name="diagnosis_level2" onchange="updateDiagnosisLevel3()">
+                                    <option value="">Select Level 2</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
+                            <td colspan="2">
+                                <select id="diagnosis_level3" name="diagnosis_level3">
+                                    <option value="">Select Level 3 (Optional)</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="3">
+                                <button type="button" class="btn btn-secondary" onclick="showAdditionalFields()">
+                                    Display Additional Fields
+                                </button>
+                                <div id="no-fields-message" class="message info" style="display: none;">
+                                    No additional fields available for this diagnosis
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
 
                     <tr id="diagnosis-specific-dropdowns-row" style="display: none;"></tr>
 
@@ -396,6 +430,11 @@
                 const content = document.querySelector('.hierarchy-content');
                 button.classList.toggle('expanded');
                 content.classList.toggle('expanded');
+            }
+            
+            function clearAdditionalFields() {
+                document.querySelectorAll('.dynamic-diagnosis-row').forEach(row => row.remove());
+                document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
             }
 
             function updateDiagnosisLevel2() {
@@ -517,7 +556,6 @@
                 
                 // Remove any existing dynamic dropdown rows
                 document.querySelectorAll('.dynamic-diagnosis-row').forEach(row => row.remove());
-                const formTable = document.querySelector('.form-table');
                 const insertAfter = document.getElementById('diagnosis-specific-dropdowns-row');
                 let lastInserted = insertAfter;
                 
@@ -640,7 +678,6 @@
                 // Clear file list display
                 document.getElementById('fileList').innerHTML = '';
                 // Hide additional fields
-                document.getElementById('diagnosis-specific-dropdowns').innerHTML = '';
                 document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
                 // Hide hierarchy
                 const hierarchyDiv = document.getElementById('diagnosis-hierarchy');
@@ -651,6 +688,14 @@
                 // Hide patient ID flash banner
                 const flashBanner = document.querySelector('.flash');
                 if (flashBanner) flashBanner.style.display = 'none';
+            }
+
+            function toggleAdvancedDiagnosis() {
+                const section = document.getElementById('advanced-diagnosis-section');
+                const caret = document.getElementById('advanced-caret');
+                const expanded = section.style.display !== 'none';
+                section.style.display = expanded ? 'none' : '';
+                if (caret) caret.classList.toggle('expanded', !expanded);
             }
 
             // Initialize form fields on page load

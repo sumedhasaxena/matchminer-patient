@@ -136,22 +136,27 @@ def get_additional_diagnosis_dropdowns(diagnosis):
 def index():
     if request.method == 'POST':
         # Generate unique ID first
-        unique_id = generate_unique_id()
+        unique_id = generate_unique_id() 
         
         gender = request.form.get('gender', '')
         age = request.form.get('age', '')
-        diagnosis_level1 = request.form.get('diagnosis_level1', '')
-        diagnosis_level2 = request.form.get('diagnosis_level2', '')
-        diagnosis_level3 = request.form.get('diagnosis_level3', '')
-        
-        # Format diagnosis based on available levels
-        if diagnosis_level1 and diagnosis_level2:
-            if diagnosis_level3:
-                diagnosis = f"{diagnosis_level3}"
-            else:
-                diagnosis = f"{diagnosis_level2}"
+
+        diagnosis_free_text = request.form.get('diagnosis_free_text', '')
+        if diagnosis_free_text:
+            diagnosis = diagnosis_free_text
         else:
-            diagnosis = ""
+            diagnosis_level1 = request.form.get('diagnosis_level1', '')
+            diagnosis_level2 = request.form.get('diagnosis_level2', '')
+            diagnosis_level3 = request.form.get('diagnosis_level3', '')
+            
+            # Format diagnosis based on available levels
+            if diagnosis_level1 and diagnosis_level2:
+                if diagnosis_level3:
+                    diagnosis = f"{diagnosis_level3}"
+                else:
+                    diagnosis = f"{diagnosis_level2}"
+            else:
+                diagnosis = ""
             
         report_date = request.form.get('report_date', '')
         tumor_mutational_burden = request.form.get('tumor_mutational_burden', '')
