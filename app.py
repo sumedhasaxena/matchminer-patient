@@ -15,12 +15,22 @@ import threading
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for flash messages
 
+# folders that contain uploaded data
 IMAGE_FOLDER = r'./patient_data/images'
 TEXT_FOLDER = r'./patient_data/clinical_data'
+
+#folders that contain processed data
+CLINICAL_JSON = r'./patient_data/clinical_json'
+GENOMIC_JSON = r'./patient_data/genomic_json'
+EXTRACTED_TEXT = r'./patient_data/extracted_text'
+
 SEQUENCE_FILE = os.path.join(TEXT_FOLDER, '.sequence_counter.json')
 
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
 os.makedirs(TEXT_FOLDER, exist_ok=True)
+os.makedirs(CLINICAL_JSON, exist_ok=True)
+os.makedirs(GENOMIC_JSON, exist_ok=True)
+os.makedirs(EXTRACTED_TEXT, exist_ok=True)
 
 # Load OncoTree data at startup
 level1_list, level1_to_level2, level2_to_level3 = get_l1_l2_l3_oncotree_data()
