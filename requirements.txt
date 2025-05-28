@@ -4,6 +4,6 @@ loguru
 requests
 biopython
 pandas
-pytorch
-pillow
-surya-ocr
+torch
+pillow==10.4.0
+surya-ocr==0.13.1

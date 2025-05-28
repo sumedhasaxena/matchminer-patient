@@ -259,16 +259,18 @@ def run_chained_scripts(first_script, first_args, first_log, first_start_msg, fi
         )
         process.wait()
         logger.info(first_finish_msg)
-        # Now run the second script
-        logger.info(second_start_msg)
-        process2 = subprocess.Popen(
-            ['python', second_script] + second_args,
-            stdout=open(second_log, 'a'),
-            stderr=subprocess.STDOUT
-        )
-        process2.wait()
-        logger.info(second_finish_msg)
+        if process.returncode == 0:
+            logger.info(second_start_msg)
+            process2 = subprocess.Popen(
+                ['python', second_script] + second_args,
+                stdout=open(second_log, 'a'),
+                stderr=subprocess.STDOUT
+            )
+            process2.wait()
+            logger.info(second_finish_msg)
+        else:
+            logger.error(f"{first_script} failed with return code {process.returncode}. {second_script} will not be run.")
     threading.Thread(target=runner, daemon=True).start()
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    app.run(host='0.0.0.0', port=8890, debug=True) 
