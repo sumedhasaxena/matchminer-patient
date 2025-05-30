@@ -25,5 +25,6 @@ patient_clinical_schema_keys = {
     "her2_status_key": "HER2_STATUS",
     "pr_status_key": "PR_STATUS",
     "er_status_key": "ER_STATUS",
-    "mmr_status_key": "MMR_STATUS"
+    "mmr_status_key": "MMR_STATUS",
+    "idh_wildtype_key": "IDH_WILDTYPE"
 } 

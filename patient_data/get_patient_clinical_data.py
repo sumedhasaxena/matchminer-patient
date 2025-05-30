@@ -18,18 +18,51 @@ logger.add("logs/app.log", rotation="10 MB", retention="10 days", enqueue=True)
 clinical_txt_dir = 'clinical_data'
 clinical_json_dir = 'clinical_json'
 
-def get_oncotree_diagnosis(text_file, value):
-    level_1_diagnosis, mapping_l1_all = onct.get_all_oncotree_data()
-    result = ai.get_level1_diagnosis_from_original_conditions(text_file, {value}, level_1_diagnosis)
-    level1_diagnosis = result['oncotree_diagnoses'][0]['oncotree_value']
+def get_oncotree_diagnosis(mmid, value):
+    level_1_diagnosis, level_2_diagnosis, level_3_diagnosis, mapping_l1_all, level1_to_level2, level2_to_level3 = onct.get_all_oncotree_data()
+    
+    # First get level 1 diagnosis
+    result = ai.get_level1_diagnosis_from_free_text(mmid, {value}, level_1_diagnosis)
+    level1_diagnosis = result['oncotree_diagnosis']
     print(level1_diagnosis)
-    if  not level1_diagnosis or level1_diagnosis.lower() == "other":
-        logger.debug(f"File: {text_file} | Skipping condition {value} as no oncotree diagnosis was returned")
+    
+    if not level1_diagnosis or level1_diagnosis.lower() == "other":
+        logger.debug(f"MMID: {mmid} | Skipping condition {value} as no oncotree diagnosis was returned")
         return None
-                        
+    
+    # Get child diagnosis
     child_oncotree_values = mapping_l1_all[level1_diagnosis]
-    result = ai.get_child_level_diagnosis_from_clinical_condition(text_file, child_oncotree_values, value)
-    return result.get('oncotree_diagnosis', None)
+    result = ai.get_child_level_diagnosis_from_clinical_condition(mmid, child_oncotree_values, value)
+    child_diagnosis = result.get('oncotree_diagnosis', None)
+    
+    if not child_diagnosis:
+        return {
+            'level1': level1_diagnosis,
+            'level2': None,
+            'level3': None
+        }
+    
+    # Check if child_diagnosis is in level2 or level3
+    if child_diagnosis in level2_to_level3:
+        # It's a level2 diagnosis
+        return {
+            'level1': level1_diagnosis,
+            'level2': child_diagnosis,
+            'level3': None
+        }
+    else:
+        # It's a level3 diagnosis, find its parent level2
+        for level2, level3s in level2_to_level3.items():
+            if child_diagnosis in level3s:
+                return {
+                    'level1': level1_diagnosis,
+                    'level2': level2,
+                    'level3': child_diagnosis
+                }
+    
+    # If we get here, something went wrong
+    logger.error(f"MMID: {mmid} | Could not determine level for child diagnosis: {child_diagnosis}")
+    return None
 
 def calculate_birth_date(age):
     # Calculate the birth date based on the current date and age
@@ -39,7 +72,6 @@ def calculate_birth_date(age):
         birth_date = datetime(birth_year, 1, 1)  # Assuming birthdate on Jan 1st
         return birth_date.strftime("%a, %d %b %Y 10:00:00 GMT")
     return None
-
 
 def parse_clinical_data(text_file):
     clinical_data = {}
@@ -85,6 +117,10 @@ def convert_to_clinical_data_format(text_file):
                 data[official_key] = int(clinical_data[official_key]) if key_id == "tmb_key" else clinical_data[official_key]
     #todo: IDH wildtype and TMB to be moved to genomic data capture logic
     return data
+
+def get_additional_info(mmid, additional_info):
+    additional_info_dict = ai.get_additional_info(mmid, additional_info)
+    return additional_info_dict
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert plain text patient clinical data to matchminer compliant JSON structure.")

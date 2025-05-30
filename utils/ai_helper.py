@@ -114,6 +114,89 @@ Output:
     
     return prompt
 
+def get_ai_prompt_level1_for_free_text_diagnosis(diagnosis, level1_oncotree_list):
+    prompt = f"""Task: Map the diagnosis to the closest type listed in 'Oncotree values' below.
+    Diagnosis: {diagnosis}
+    Oncotree values:{level1_oncotree_list}
+    The output should be in the json format :
+    {{
+    "oncotree_diagnosis": ""
+    }}"""
+    
+    return prompt
+
+def get_level1_diagnosis_from_free_text(mmid:str, diagnosis: str, level1_oncotree: set) -> dict:    
+    
+    level1_oncotree_list = list(level1_oncotree)    
+    prompt = get_ai_prompt_level1_for_free_text_diagnosis(diagnosis, level1_oncotree_list)
+        
+    ai_response = send_ai_request(mmid, prompt)
+    oncotree_diagnosis_dict = parse_ai_response(ai_response)
+    return oncotree_diagnosis_dict
+
+def get_child_level_diagnosis_from_clinical_condition(mmid:str, child_nodes_oncotree:set, condition: str) -> dict:
+
+    child_nodes_oncotree_list = list(child_nodes_oncotree)
+
+    prompt = get_ai_prompt_clinical_oncotree_diagnosis(condition, child_nodes_oncotree_list)
+
+    ai_response = send_ai_request(mmid, prompt)
+    oncotree_diagnosis_dict = parse_ai_response(ai_response)   
+    return oncotree_diagnosis_dict
+
+def get_ai_prompt_clinical_oncotree_diagnosis(condition, child_nodes_oncotree_list):
+
+    # cancer_condition: {condition} E.g. -> Colorectal Cancer
+    # Oncotree values: {child_nodes_oncotree} # E.g. -> {'Signet Ring Cell Adenocarcinoma of the Colon and Rectum', 'Colon Adenocarcinoma In Situ', 'Small Bowel Well-Differentiated Neuroendocrine Tumor', 'Gastrointestinal Neuroendocrine Tumors', 'Well-Differentiated Neuroendocrine Tumor of the Rectum', 'Small Bowel Cancer', 'Anal Squamous Cell Carcinoma', 'Anorectal Mucosal Melanoma', 'Low-grade Appendiceal Mucinous Neoplasm', 'Medullary Carcinoma of the Colon', 'Goblet Cell Adenocarcinoma of the Appendix', 'Mucinous Adenocarcinoma of the Appendix', 'Appendiceal Adenocarcinoma', 'Small Intestinal Carcinoma', 'Well-Differentiated Neuroendocrine Tumor of the Appendix', 'Signet Ring Cell Type of the Appendix', 'Colorectal Adenocarcinoma', 'High-Grade Neuroendocrine Carcinoma of the Colon and Rectum', 'Colonic Type Adenocarcinoma of the Appendix', 'Anal Gland Adenocarcinoma', 'Rectal Adenocarcinoma', 'Mucinous Adenocarcinoma of the Colon and Rectum', 'Duodenal Adenocarcinoma', 'Colon Adenocarcinoma', 'Tubular Adenoma of the Colon'}
+
+    prompt = f"""
+    Task: Map the cancer condition to the closest diagnosis from the list of 'Oncotree values' below.
+    Cancer_condition: {condition}
+    Oncotree values: {child_nodes_oncotree_list}
+    The output should be in the json format :
+    {{
+    "cancer_condition": "",
+    "oncotree_diagnosis": ""
+    }}
+    """
+    return prompt
+
+def get_additional_info(mmid:str, additional_info: str)-> dict:
+    prompt = get_additional_info_prompt(additional_info)
+    ai_response = send_ai_request(mmid, prompt)
+    additional_info_dict = parse_ai_response(ai_response)   
+    return additional_info_dict
+
+def get_additional_info_prompt(additional_info):
+    prompt = f"""Task: Analyze the provided description and identify the status of specific conditions. Only include conditions mentioned in the description and omit any absent fields.
+
+Conditions and Expected Output:
+HER2: HER2_STATUS - Positive/Negative/Unknown
+ER: ER_STATUS - Positive/Negative/Unknown
+PR: PR_STATUS - Positive/Negative/Unknown
+PDL1: PDL1_STATUS - High/Low/Unknown
+MGMT Promoter Status: MGMT_PROMOTER_STATUS - Methylated/Unmethylated
+MMR Status: MMR_STATUS - Proficient (MMR-P / MSS) / Deficient (MMR-D / MSI-H)
+IDH Wildtype: IDH_WILDTYPE - True/False
+TMB: TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE - Any float value
+
+    Description: {additional_info}
+
+    Example Description:
+    IDH wildtype
+    MGMT promoter unmethylated
+    TMB: 2.83 muts/mb
+    MS-stable 
+
+    Example Output:
+    {{
+    "IDH_WILDTYPE": "True",
+    "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 2.83,
+    "MGMT_PROMOTER_STATUS": "Unmethylated",
+    "MMR_STATUS": "Proficient (MMR-P / MSS)"
+    }}
+    """         
+    return prompt
 
 def safe_get(dict_data, keys):
     for key in keys:

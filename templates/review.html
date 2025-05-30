@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Patient Data</title>
+    <style>
+        /* Copy all styles from index.html except advanced-toggle related styles */
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 0;
+        }
+        .banner {
+            background-color: #ffffff;
+            padding: 15px 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .banner img {
+            height: 80px;
+            width: auto;
+        }
+        .content {
+            margin: 40px;
+        }
+        form { 
+            max-width: 800px; 
+            margin: auto; 
+        }
+        .form-table {
+            width: 100%;
+            min-width: 1000px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .form-table td {
+            padding: 8px 0;
+            vertical-align: middle;
+        }
+        .form-table td:first-child {
+            width: 40%;
+            padding-right: 15px;
+        }
+        .form-table td:last-child {
+            width: 60%;
+        }
+        label {
+            display: block;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            max-width: 300px;
+            box-sizing: border-box;
+        }
+        .flash { 
+            color: #2c5282;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #ebf8ff;
+            border: 1px solid #bee3f8;
+            text-align: center;
+            max-width: 800px;
+        }
+        .flash .patient-id {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .flash .reference-note {
+            font-size: 0.9em;
+            color: #4a5568;
+            display: block;
+        }
+        h2 { 
+            text-align: center; 
+            margin-top: 0;
+        }
+        h3 { 
+            text-align: left; 
+        }
+        .section { 
+            margin-bottom: 30px; 
+        }
+        .required { 
+            color: red; 
+            margin-right: 3px; 
+        }
+        .file-list {
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .submit-btn {
+            background-color: #2b6cb0;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: block;
+            margin: 30px auto;
+            min-width: 200px;
+        }
+        .submit-btn:hover {
+            background-color: #2c5282;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .submit-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .diagnosis-info {
+            background-color: #ebf8ff;
+            border: 1px solid #bee3f8;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .diagnosis-info h4 {
+            margin: 0 0 10px 0;
+            color: #2c5282;
+        }
+        .diagnosis-info p {
+            margin: 5px 0;
+            color: #4a5568;
+        }
+        .error-message {
+            color: #c53030;
+            background-color: #fff5f5;
+            border: 1px solid #feb2b2;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <img src="{{ url_for('static', filename='images/matchminer_hkumed_logo.png') }}" alt="MatchMiner HKUMed Logo">
+    </div>
+    <div class="content">
+        <h2>Patient Data</h2>
+        <form method="post" action="{{ url_for('submit_review') }}">
+            <div class="section">
+                <h3>Clinical Data</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="gender"><span class="required">*</span>Gender:</label></td>
+                        <td colspan="2">
+                            <select id="gender" name="gender" required>
+                                <option value="">Select</option>
+                                <option value="Male" {% if form_data.gender == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if form_data.gender == 'Female' %}selected{% endif %}>Female</option>
+                                <option value="Other" {% if form_data.gender == 'Other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="age"><span class="required">*</span>Age:</label></td>
+                        <td colspan="2">
+                            <input type="number" id="age" name="age" min="0" value="{{ form_data.age }}" required>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="report_date"><span class="required">*</span>Report Date:</label></td>
+                        <td colspan="2">
+                            <input type="date" id="report_date" name="report_date" value="{{ form_data.report_date }}" required>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
+                        <td colspan="2">
+                            <select id="diagnosis_level1" name="diagnosis_level1" required onchange="updateDiagnosisLevel2()">
+                                <option value="">Select Level 1</option>
+                                {% for level1 in level1_list %}
+                                <option value="{{ level1 }}" {% if diagnosis_result and diagnosis_result.level1 == level1 %}selected{% endif %}>{{ level1 }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="diagnosis_level2">Diagnosis Level 2:</label></td>
+                        <td colspan="2">
+                            <select id="diagnosis_level2" name="diagnosis_level2" onchange="updateDiagnosisLevel3()">
+                                <option value="">Select Level 2</option>
+                                {% if diagnosis_result and diagnosis_result.level2 %}
+                                <option value="{{ diagnosis_result.level2 }}" selected>{{ diagnosis_result.level2 }}</option>
+                                {% endif %}
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
+                        <td colspan="2">
+                            <select id="diagnosis_level3" name="diagnosis_level3">
+                                <option value="">Select Level 3 (Optional)</option>
+                                {% if diagnosis_result and diagnosis_result.level3 %}
+                                <option value="{{ diagnosis_result.level3 }}" selected>{{ diagnosis_result.level3 }}</option>
+                                {% endif %}
+                            </select>
+                        </td>
+                    </tr>
+                    <!-- Dynamic Dropdowns -->                    
+                    {% for dd in dynamic_dropdowns %}
+                    <tr>
+                        <td><label for="{{ dd.name }}">{{ dd.label }}:</label></td>
+                        <td colspan="2">
+                            <select id="{{ dd.name }}" name="{{ dd.name }}">
+                                {% for option in dd.options %}
+                                <option value="{{ option }}" {% if dd.selected == option %}selected{% endif %}>{{ option }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <div class="section">
+                <h3>Additional Information</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="description">Description:</label></td>
+                        <td>
+                            <textarea id="description" name="description" rows="6" readonly>{{ form_data.description }}</textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="section">
+                <h3>Genomic Data</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="extracted_text">Parsed Genomic data:</label></td>
+                        <td>
+                            <textarea id="extracted_text" name="extracted_text" rows="8">{% if session.extracted_text %}{{ session.extracted_text }}{% endif %}</textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: center; gap: 16px;">
+                <button type="button" class="submit-btn" onclick="window.location.href='{{ url_for('index') }}'">Back</button>
+                <button type="submit" class="submit-btn">Confirm</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function updateDiagnosisLevel2() {
+            const level1 = document.getElementById('diagnosis_level1').value;
+            const level2Select = document.getElementById('diagnosis_level2');
+            const level3Select = document.getElementById('diagnosis_level3');
+            level2Select.innerHTML = '<option value="">Select Level 2</option>';
+            level3Select.innerHTML = '<option value="">Select Level 3 (Optional)</option>';
+            if (level1) {
+                fetch(`/get_level2/${encodeURIComponent(level1)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(level2 => {
+                            const option = document.createElement('option');
+                            option.value = level2;
+                            option.textContent = level2;
+                            level2Select.appendChild(option);
+                        });
+                    });
+            }
+        }
+
+        function updateDiagnosisLevel3() {
+            const level2 = document.getElementById('diagnosis_level2').value;
+            const level3Select = document.getElementById('diagnosis_level3');
+            level3Select.innerHTML = '<option value="">Select Level 3 (Optional)</option>';
+            if (level2) {
+                fetch(`/get_level3/${encodeURIComponent(level2)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(level3 => {
+                            const option = document.createElement('option');
+                            option.value = level3;
+                            option.textContent = level3;
+                            level3Select.appendChild(option);
+                        });
+                    });
+            }
+        }
+    </script>
+</body>
+</html> 

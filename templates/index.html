@@ -257,6 +257,11 @@
             color: #2b6cb0;
             margin-bottom: 10px;
             user-select: none;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .advanced-toggle:hover {
+        background-color: #edf2f7;
         }
         .advanced-caret {
             display: inline-block;
@@ -267,9 +272,48 @@
         .advanced-caret.expanded {
             transform: rotate(90deg);
         }
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #2b6cb0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loading-text {
+            font-size: 18px;
+            color: #2b6cb0;
+            text-align: center;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <!-- Add loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Searching diagnosis...</div>
+    </div>
     <div class="banner">
         <img src="{{ url_for('static', filename='images/matchminer_hkumed_logo.png') }}" alt="MatchMiner HKUMed Logo">
     </div>
@@ -292,26 +336,32 @@
                         <td colspan="2">
                             <select id="gender" name="gender" required>
                                 <option value="">Select</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
+                                <option value="Male" {% if form_data.gender == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if form_data.gender == 'Female' %}selected{% endif %}>Female</option>
+                                <option value="Other" {% if form_data.gender == 'Other' %}selected{% endif %}>Other</option>
                             </select>
                         </td>
                     </tr>
 
                     <tr>
                         <td><label for="age"><span class="required">*</span>Age:</label></td>
-                        <td colspan="2"><input type="number" id="age" name="age" min="0" required></td>
+                        <td colspan="2">
+                            <input type="number" id="age" name="age" min="0" value="{{ form_data.age or '' }}" required>
+                        </td>
                     </tr>
 
                     <tr>
                         <td><label for="report_date"><span class="required">*</span>Report Date:</label></td>
-                        <td colspan="2"><input type="date" id="report_date" name="report_date" required></td>
+                        <td colspan="2">
+                            <input type="date" id="report_date" name="report_date" value="{{ form_data.report_date or '' }}" required>
+                        </td>
                     </tr>
 
                     <tr>
-                        <td><label for="diagnosis_free_text"><span class="required">*</span>Diagnosis (free text):</label></td>
-                        <td colspan="2"><input type="text" id="diagnosis_free_text" name="diagnosis_free_text" required></td>
+                        <td><label for="diagnosis_free_text">Diagnosis (free text):</label></td>
+                        <td colspan="2">
+                            <input type="text" id="diagnosis_free_text" name="diagnosis_free_text" value="{{ free_text_diagnosis or '' }}">
+                        </td>
                     </tr>
                     <!-- <tr>
                         <td colspan="3">
@@ -333,7 +383,7 @@
                                 <select id="diagnosis_level1" name="diagnosis_level1" onchange="updateDiagnosisLevel2();clearAdditionalFields()">
                                     <option value="">Select Level 1</option>
                                     {% for level1 in level1_list %}
-                                    <option value="{{ level1 }}">{{ level1 }}</option>
+                                    <option value="{{ level1 }}" {% if diagnosis_result.level1 == level1 %}selected{% endif %}>{{ level1 }}</option>
                                     {% endfor %}
                                 </select>
                             </td>
@@ -363,6 +413,9 @@
                             <td colspan="2">
                                 <select id="diagnosis_level2" name="diagnosis_level2" onchange="updateDiagnosisLevel3()">
                                     <option value="">Select Level 2</option>
+                                    {% if diagnosis_result.level2 %}
+                                    <option value="{{ diagnosis_result.level2 }}" selected>{{ diagnosis_result.level2 }}</option>
+                                    {% endif %}
                                 </select>
                             </td>
                         </tr>
@@ -371,6 +424,9 @@
                             <td colspan="2">
                                 <select id="diagnosis_level3" name="diagnosis_level3">
                                     <option value="">Select Level 3 (Optional)</option>
+                                    {% if diagnosis_result.level3 %}
+                                    <option value="{{ diagnosis_result.level3 }}" selected>{{ diagnosis_result.level3 }}</option>
+                                    {% endif %}
                                 </select>
                             </td>
                         </tr>
@@ -384,14 +440,8 @@
                                 </div>
                             </td>
                         </tr>
+                        <tr id="diagnosis-specific-dropdowns-row" style="display: none;"></tr>
                     </tbody>
-
-                    <tr id="diagnosis-specific-dropdowns-row" style="display: none;"></tr>
-
-                    <tr>
-                        <td><label for="tumor_mutational_burden">Tumor Mutational Burden per Megabase:</label></td>
-                        <td><input type="number" step="any" id="tumor_mutational_burden" name="tumor_mutational_burden"></td>
-                    </tr>
                 </table>
             </div>
             <div class="section">
@@ -399,8 +449,8 @@
                 <table class="form-table">
                     <tr>
                         <td><label for="description">Description:</label></td>
-                        <td>
-                            <textarea id="description" name="description" rows="6" style="width: 100%; max-width: 500px;"></textarea>
+                        <td colspan="2">
+                            <textarea id="description" name="description">{{ form_data.description or '' }}</textarea>
                         </td>
                     </tr>
                 </table>
@@ -700,6 +750,19 @@
 
             // Initialize form fields on page load
             document.addEventListener('DOMContentLoaded', updateDiagnosisLevel2);
+
+            // Add form submission handler
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const freeTextDiagnosis = document.getElementById('diagnosis_free_text').value;
+                
+                if (freeTextDiagnosis) {
+                    // Show loading overlay
+                    const loadingOverlay = document.getElementById('loadingOverlay');
+                    loadingOverlay.style.display = 'flex';
+                    // Form will submit normally, overlay stays visible until redirect
+                }
+                // If no free text diagnosis, form submits normally without overlay
+            });
         </script>
     </div>
 </body>
