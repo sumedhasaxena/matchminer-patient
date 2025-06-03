@@ -58,6 +58,14 @@
             max-width: 300px;
             box-sizing: border-box;
         }
+        /* Add specific style for genomic data textarea */
+        textarea#extracted_text {
+            max-width: 600px;
+            min-height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.4;
+        }
         .flash { 
             color: #2c5282;
             margin: 20px auto;
@@ -157,6 +165,67 @@
             border-radius: 4px;
             margin-bottom: 20px;
         }
+        /* Add style for instruction message */
+        .instruction-message {
+            color: #2d3748;
+            background: linear-gradient(to right, #f8fafc, #f1f5f9);
+            border-left: 4px solid #3182ce;
+            padding: 16px 24px;
+            border-radius: 6px;
+            margin: 0 auto 30px auto;
+            max-width: 800px;
+            text-align: left;
+            font-size: 0.95em;
+            line-height: 1.6;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+        .instruction-message::before {
+            content: "ℹ️";
+            position: absolute;
+            left: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+        @media (max-width: 900px) {
+            .instruction-message::before {
+                display: none;
+            }
+            .instruction-message {
+                margin-left: 20px;
+                margin-right: 20px;
+            }
+        }
+        /* Add styles for readonly textarea */
+        textarea[readonly] {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            color: #4a5568;
+            cursor: not-allowed;
+            opacity: 0.9;
+        }
+        textarea[readonly]:focus {
+            outline: none;
+            box-shadow: none;
+            border-color: #e2e8f0;
+        }
+        /* Add style for hint text */
+        .hint-text {
+            font-size: 0.85em;
+            color: #718096;
+            margin-top: 4px;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .info-icon {
+            color: #3182ce;
+            font-size: 1.1em;
+            font-style: normal;
+        }
     </style>
 </head>
 <body>
@@ -165,6 +234,9 @@
     </div>
     <div class="content">
         <h2>Patient Data</h2>
+        <div class="instruction-message">
+            <strong>Review Required:</strong> Please carefully review all patient information below. You may modify any field as needed. Click '<b>Confirm</b>' to proceed with the submission or '<b>Back</b>' to make additional changes.
+        </div>
         <form method="post" action="{{ url_for('submit_review') }}">
             <div class="section">
                 <h3>Clinical Data</h3>
@@ -208,9 +280,9 @@
                         <td colspan="2">
                             <select id="diagnosis_level2" name="diagnosis_level2" onchange="updateDiagnosisLevel3()">
                                 <option value="">Select Level 2</option>
-                                {% if diagnosis_result and diagnosis_result.level2 %}
-                                <option value="{{ diagnosis_result.level2 }}" selected>{{ diagnosis_result.level2 }}</option>
-                                {% endif %}
+                                {% for level2 in level2_list %}
+                                <option value="{{ level2 }}" {% if diagnosis_result and (diagnosis_result.level2|trim == level2|trim) %}selected{% endif %}>{{ level2 }}</option>
+                                {% endfor %}
                             </select>
                         </td>
                     </tr>
@@ -219,9 +291,9 @@
                         <td colspan="2">
                             <select id="diagnosis_level3" name="diagnosis_level3">
                                 <option value="">Select Level 3 (Optional)</option>
-                                {% if diagnosis_result and diagnosis_result.level3 %}
-                                <option value="{{ diagnosis_result.level3 }}" selected>{{ diagnosis_result.level3 }}</option>
-                                {% endif %}
+                                {% for level3 in level3_list %}
+                                <option value="{{ level3 }}" {% if diagnosis_result and (diagnosis_result.level3|trim == level3|trim) %}selected{% endif %}>{{ level3 }}</option>
+                                {% endfor %}
                             </select>
                         </td>
                     </tr>
@@ -246,7 +318,11 @@
                     <tr>
                         <td><label for="description">Description:</label></td>
                         <td>
-                            <textarea id="description" name="description" rows="6" readonly>{{ form_data.description }}</textarea>
+                            <textarea id="description" name="description" rows="6" readonly class="readonly-field" style="height: 120px;">{{ form_data.description }}</textarea>
+                            <div class="hint-text">
+                                <span class="info-icon">ℹ️</span>
+                                To edit additional description, please click on 'Back' button
+                            </div>
                         </td>
                     </tr>
                 </table>
@@ -257,13 +333,13 @@
                     <tr>
                         <td><label for="extracted_text">Parsed Genomic data:</label></td>
                         <td>
-                            <textarea id="extracted_text" name="extracted_text" rows="8">{% if session.extracted_text %}{{ session.extracted_text }}{% endif %}</textarea>
+                            <textarea id="extracted_text" name="extracted_text" rows="12">{% if session.extracted_text %}{{ session.extracted_text }}{% endif %}</textarea>
                         </td>
                     </tr>
                 </table>
             </div>
             <div style="display: flex; justify-content: center; gap: 16px;">
-                <button type="button" class="submit-btn" onclick="window.location.href='{{ url_for('index') }}'">Back</button>
+                <button type="button" class="submit-btn" onclick="window.location.href='{{ url_for('index', from_review=1) }}'">Back</button>
                 <button type="submit" class="submit-btn">Confirm</button>
             </div>
         </form>
