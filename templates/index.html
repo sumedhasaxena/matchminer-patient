@@ -118,9 +118,17 @@
             border-bottom: none;
         }
         .remove-file {
-            color: red;
+            color: #e53e3e;
             cursor: pointer;
             margin-left: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 0 5px;
+            border-radius: 3px;
+            transition: background-color 0.2s;
+        }
+        .remove-file:hover {
+            background-color: #fed7d7;
         }
         .btn {
             background-color: #4a5568;
@@ -300,6 +308,54 @@
             font-size: 18px;
             color: #2b6cb0;
             text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .progress-container {
+            width: 80%;
+            max-width: 600px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .progress-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f7fafc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-item.pending {
+            color: #718096;
+        }
+
+        .progress-item.running {
+            color: #2b6cb0;
+            background: #ebf8ff;
+        }
+
+        .progress-item.completed {
+            color: #38a169;
+            background: #f0fff4;
+        }
+
+        .progress-item.error {
+            color: #e53e3e;
+            background: #fff5f5;
+        }
+
+        .progress-status {
+            font-weight: 500;
+        }
+
+        .progress-message {
+            font-size: 14px;
+            color: #4a5568;
         }
         
         @keyframes spin {
@@ -312,7 +368,21 @@
     <!-- Add loading overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Searching diagnosis...</div>
+        <div class="loading-text">Processing your request...</div>
+        <div class="progress-container">
+            <div id="diagnosisProgress" class="progress-item pending">
+                <span class="progress-status">Diagnosis Lookup</span>
+                <span class="progress-message">Trying to get the closest oncotree match for the entered diagnosis...</span>
+            </div>
+            <div id="additionalInfoProgress" class="progress-item pending">
+                <span class="progress-status">Additional Information</span>
+                <span class="progress-message">Extracting additional information...</span>
+            </div>
+            <div id="ocrProgress" class="progress-item pending">
+                <span class="progress-status">Image Processing</span>
+                <span class="progress-message">Parsing any uploaded image(s) to extract genomic data...</span>
+            </div>
+        </div>
     </div>
     <div class="banner">
         <img src="{{ url_for('static', filename='images/matchminer_hkumed_logo.png') }}" alt="MatchMiner HKUMed Logo">
@@ -450,7 +520,7 @@
                     <tr>
                         <td><label for="description">Description:</label></td>
                         <td colspan="2">
-                            <textarea id="description" name="description">{{ form_data.description or '' }}</textarea>
+                            <textarea id="description" name="description" style="height: 120px;">{{ form_data.description or '' }}</textarea>
                         </td>
                     </tr>
                 </table>
@@ -463,7 +533,16 @@
                         <td>
                             <label for="genomic_images" class="file-upload-btn">Choose Files</label>
                             <input type="file" id="genomic_images" name="genomic_images" accept="image/*" multiple onchange="updateFileList(this)">
-                            <div id="fileList" class="file-list"></div>
+                            <div id="fileList" class="file-list">
+                                {% if form_data and form_data.genomic_images %}
+                                    {% for file in form_data.genomic_images %}
+                                    <div class="file-item">
+                                        <span>{{ file }}</span>
+                                        <span class="remove-file" onclick="removeFileFromList(this)">×</span>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                 </table>
@@ -690,34 +769,77 @@
                     });
             }
 
-            function updateFileList(input) {
+            function initializeFileList() {
                 const fileList = document.getElementById('fileList');
-                fileList.innerHTML = '';
-                
-                Array.from(input.files).forEach((file, index) => {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'file-item';
-                    fileItem.innerHTML = `
-                        <span>${file.name}</span>
-                        <span class="remove-file" onclick="removeFile(${index})">×</span>
-                    `;
-                    fileList.appendChild(fileItem);
-                });
+                const existingFiles = fileList.querySelectorAll('.file-item');
+                if (existingFiles.length > 0) {
+                    // If there are existing files, store them in a data attribute
+                    const fileNames = Array.from(existingFiles).map(item => item.textContent.trim());
+                    fileList.setAttribute('data-existing-files', JSON.stringify(fileNames));
+                }
             }
 
-            function removeFile(index) {
-                const input = document.getElementById('genomic_images');
-                const dt = new DataTransfer();
-                const files = input.files;
+            function updateFileList(input) {
+                const fileList = document.getElementById('fileList');
+                const existingFiles = JSON.parse(fileList.getAttribute('data-existing-files') || '[]');
+                
+                // Clear the file list
+                fileList.innerHTML = '';
+                
+                // Add existing files back
+                existingFiles.forEach(fileName => {
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.innerHTML = `
+                        <span>${fileName}</span>
+                        <span class="remove-file" onclick="removeFileFromList(this)">×</span>
+                    `;
+                    fileList.appendChild(div);
+                });
 
-                for (let i = 0; i < files.length; i++) {
-                    if (i !== index) {
-                        dt.items.add(files[i]);
-                    }
+                // Add new files
+                if (input.files.length > 0) {
+                    Array.from(input.files).forEach(file => {
+                        const div = document.createElement('div');
+                        div.className = 'file-item';
+                        div.innerHTML = `
+                            <span>${file.name}</span>
+                            <span class="remove-file" onclick="removeFileFromList(this)">×</span>
+                        `;
+                        fileList.appendChild(div);
+                    });
                 }
 
-                input.files = dt.files;
-                updateFileList(input);
+                // Update the data attribute with current files
+                const currentFiles = Array.from(fileList.querySelectorAll('.file-item span:first-child'))
+                    .map(span => span.textContent.trim());
+                fileList.setAttribute('data-existing-files', JSON.stringify(currentFiles));
+            }
+
+            function removeFileFromList(button) {
+                const fileItem = button.parentElement;
+                const fileName = fileItem.querySelector('span:first-child').textContent.trim();
+                const fileList = document.getElementById('fileList');
+                
+                // Remove the file item from the display
+                fileItem.remove();
+                
+                // Update the data attribute
+                const currentFiles = Array.from(fileList.querySelectorAll('.file-item span:first-child'))
+                    .map(span => span.textContent.trim());
+                fileList.setAttribute('data-existing-files', JSON.stringify(currentFiles));
+
+                // If this was a newly added file (not from session), also remove it from the input
+                const input = document.getElementById('genomic_images');
+                if (input.files.length > 0) {
+                    const dt = new DataTransfer();
+                    Array.from(input.files).forEach(file => {
+                        if (file.name !== fileName) {
+                            dt.items.add(file);
+                        }
+                    });
+                    input.files = dt.files;
+                }
             }
 
             function resetForm() {
@@ -748,8 +870,8 @@
                 if (caret) caret.classList.toggle('expanded', !expanded);
             }
 
-            // Initialize form fields on page load
-            document.addEventListener('DOMContentLoaded', updateDiagnosisLevel2);
+           // Initialize form fields on page load
+           document.addEventListener('DOMContentLoaded', updateDiagnosisLevel2);
 
             // Add form submission handler
             document.querySelector('form').addEventListener('submit', function(e) {
