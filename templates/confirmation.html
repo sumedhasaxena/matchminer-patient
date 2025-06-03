@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        .banner {
+            background-color: #ffffff;
+            padding: 15px 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .banner img {
+            height: 80px;
+            width: auto;
+        }
+        .content { margin: 40px; display: flex; flex-direction: column; align-items: center; }
+        .flash {
+            color: #2c5282;
+            margin: 20px auto 30px auto;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #ebf8ff;
+            border: 1px solid #bee3f8;
+            text-align: center;
+            max-width: 800px;
+        }
+        .flash .patient-id {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .flash .reference-note {
+            font-size: 0.9em;
+            color: #4a5568;
+            display: block;
+        }
+        h2 { text-align: center; margin-top: 0; }
+        h3 { text-align: left; }
+        .section { margin-bottom: 30px; }
+        .form-table {
+            min-width: 1000px;
+            max-width: 1100px;
+            margin: 0 auto;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .form-table td { padding: 8px 0; vertical-align: middle; }
+        .form-table td:first-child { width: 40%; padding-right: 15px; }
+        .form-table td:last-child { width: 60%; }
+        label { display: block; white-space: normal; word-wrap: break-word; }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            max-width: 300px;
+            box-sizing: border-box;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            color: #4a5568;
+            cursor: not-allowed;
+            opacity: 0.9;
+        }
+        textarea#extracted_text {
+            max-width: 600px;
+            min-height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .submit-btn {
+            background-color: #2b6cb0;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: block;
+            margin: 30px auto 0 auto;
+            min-width: 200px;
+        }
+        .submit-btn:hover {
+            background-color: #2c5282;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .submit-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <img src="{{ url_for('static', filename='images/matchminer_hkumed_logo.png') }}" alt="MatchMiner HKUMed Logo">
+    </div>
+    {% if success_message %}
+    <div class="flash">
+        <span class="patient-id">{{ success_message.split('\n')[0] }}</span>
+        <span class="reference-note">{{ success_message.split('\n')[1] }}</span>
+    </div>
+    {% endif %}
+    <div class="content">
+        <h2>Patient Data (Read Only)</h2>
+        <form>
+            <div class="section">
+                <h3>Clinical Data</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="gender"><span class="required">*</span>Gender:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="gender" name="gender" value="{{ form_data.gender }}" readonly>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="age"><span class="required">*</span>Age:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="age" name="age" value="{{ form_data.age }}" readonly>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="report_date"><span class="required">*</span>Report Date:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="report_date" name="report_date" value="{{ form_data.report_date }}" readonly>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="diagnosis_level1" name="diagnosis_level1" value="{{ diagnosis_result.level1 }}" readonly>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="diagnosis_level2">Diagnosis Level 2:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="diagnosis_level2" name="diagnosis_level2" value="{{ diagnosis_result.level2 }}" readonly>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="diagnosis_level3" name="diagnosis_level3" value="{{ diagnosis_result.level3 }}" readonly>
+                        </td>
+                    </tr>
+                    {% for dd in dynamic_dropdowns %}
+                    <tr>
+                        <td><label for="{{ dd.name }}">{{ dd.label }}:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="{{ dd.name }}" name="{{ dd.name }}" value="{{ dd.selected }}" readonly>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <div class="section">
+                <h3>Additional Information</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="description">Description:</label></td>
+                        <td colspan="2">
+                            <textarea id="description" name="description" style="height: 120px;" readonly>{{ form_data.description }}</textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="section">
+                <h3>Genomic Data</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="extracted_text">Parsed Genomic data:</label></td>
+                        <td>
+                            <textarea id="extracted_text" name="extracted_text" rows="12" readonly>{% if session.extracted_text %}{{ session.extracted_text }}{% endif %}</textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: center; gap: 16px;">
+                <button type="button" class="submit-btn" onclick="window.location.href='{{ url_for('index') }}'">Exit</button>
+                
+                <!-- <a href="{{ url_for('index') }}" class="submit-btn">Exit</a> -->
+            </div>
+        </form>
+    </div>
+</body>
+</html> 

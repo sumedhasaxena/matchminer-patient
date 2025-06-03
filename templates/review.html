@@ -232,6 +232,17 @@
     <div class="banner">
         <img src="{{ url_for('static', filename='images/matchminer_hkumed_logo.png') }}" alt="MatchMiner HKUMed Logo">
     </div>
+    {% if success_message %}
+    <div class="flash">
+        <span class="patient-id">{{ success_message.split('\n')[0] }}</span>
+        <span class="reference-note">{{ success_message.split('\n')[1] }}</span>
+        {% if show_exit %}
+        <div style="margin-top: 16px; text-align: center;">
+            <a href="{{ url_for('index') }}" class="submit-btn" style="display: inline-block; min-width: 120px;">Exit</a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
     <div class="content">
         <h2>Patient Data</h2>
         <div class="instruction-message">

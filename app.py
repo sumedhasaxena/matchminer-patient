@@ -413,11 +413,16 @@ def review():
                             'options': dropdown['values'],
                             'selected': session[session_key]
                         })
+
     # Prepare level2 and level3 lists for dropdowns
     selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
     selected_level2 = diagnosis_result.get('level2') if diagnosis_result else None
     level2_list = level1_to_level2.get(selected_level1, []) if selected_level1 else []
     level3_list = level2_to_level3.get(selected_level2, []) if selected_level2 else []
+   
+    # Store dynamic_dropdowns in session for use in confirmation and text file
+    session['dynamic_dropdowns'] = dynamic_dropdowns
+
     return render_template(
         'review.html',
         form_data=form_data,
@@ -425,7 +430,9 @@ def review():
         level1_list=level1_list,
         diagnosis_result=diagnosis_result,
         diagnosis_error=diagnosis_error,
+        dynamic_dropdowns=dynamic_dropdowns,
         level2_list=level2_list,
+        level3_list=level3_list
     )
 
 @app.route('/submit_review', methods=['POST'])
@@ -449,6 +456,38 @@ def submit_review():
         # Get the unique ID
         unique_id = form_data.get('unique_id')
         
+        # Determine the lowest level diagnosis
+        diagnosis_value = diagnosis_level3 or diagnosis_level2
+        
+        # Retrieve dynamic_dropdowns from session (as built for the review page)
+        session_dynamic_dropdowns = session.get('dynamic_dropdowns', [])
+        dynamic_dropdowns = []
+        for dd in session_dynamic_dropdowns:
+            key = dd['name']
+            selected_value = request.form.get(key, '')
+            dynamic_dropdowns.append({
+                'name': key,
+                'label': dd['label'],
+                'options': dd['options'],
+                'selected': selected_value
+            })
+
+        # Save data to a text file named after unique_id
+        data_file = f"{unique_id}.txt"
+        data_file_path = os.path.abspath(os.path.join(TEXT_FOLDER, data_file))
+        with open(data_file_path, 'w', encoding='utf-8') as f:
+            f.write(f"{patient_clinical_schema_keys['sample_id_key']}: {unique_id}\n")
+            f.write(f"{patient_clinical_schema_keys['mrn_key']}: {unique_id}\n")
+            f.write(f"{patient_clinical_schema_keys['gender_key']}: {form_data.get('gender', '')}\n")
+            f.write(f"{patient_clinical_schema_keys['age_key'] if 'age_key' in patient_clinical_schema_keys else 'AGE'}: {form_data.get('age', '')}\n")
+            f.write(f"{patient_clinical_schema_keys['oncotree_diag_key'] if 'oncotree_diag_key' in patient_clinical_schema_keys else 'DIAGNOSIS'}: {diagnosis_value}\n")
+            f.write(f"{patient_clinical_schema_keys['oncotree_diag_name_key'] if 'oncotree_diag_name_key' in patient_clinical_schema_keys else 'DIAGNOSIS_NAME'}: {diagnosis_value}\n")
+            f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
+            # Write dynamic dropdowns as key-value pairs
+            for dd in dynamic_dropdowns:
+                f.write(f"{dd['name']}: {dd['selected']}\n")
+            f.write("---\n")
+        
         # Process the form data as needed
         # ... your existing form processing logic ...
         
@@ -458,9 +497,23 @@ def submit_review():
         session.pop('diagnosis_result', None)
         session.pop('diagnosis_error', None)
         
-        # Redirect to success page or show success message
-        flash(f"MatchMiner ID: {unique_id}\nPatient data recorded successfully. Please save the MatchMiner ID for future reference")
-        return redirect(url_for('index'))
+        # Redirect to confirmation page with banner and read-only fields
+        flash_msg = f"MatchMiner ID: {unique_id}\nPatient data recorded successfully. Please save the MatchMiner ID for future reference"
+        return render_template(
+            'confirmation.html',
+            form_data=form_data,
+            free_text_diagnosis=session.get('free_text_diagnosis'),
+            level1_list=level1_list,
+            diagnosis_result={
+                'level1': diagnosis_level1,
+                'level2': diagnosis_level2,
+                'level3': diagnosis_level3
+            },
+            dynamic_dropdowns=dynamic_dropdowns,
+            level2_list=level1_to_level2.get(diagnosis_level1, []),
+            level3_list=level2_to_level3.get(diagnosis_level2, []),
+            success_message=flash_msg
+        )
         
     except Exception as e:
         flash(f"Error submitting diagnosis: {str(e)}")
