@@ -252,7 +252,7 @@ def index():
         report_date = form_data.get('report_date', '')
         description = form_data.get('description', '')
 
-        # Process uploaded images
+        # Use OCR to extract text from images
         image_files = request.files.getlist('genomic_images')
         image_filenames, extracted_text = process_uploaded_images(unique_id, image_files)
         
@@ -413,7 +413,11 @@ def review():
                             'options': dropdown['values'],
                             'selected': session[session_key]
                         })
-
+    # Prepare level2 and level3 lists for dropdowns
+    selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
+    selected_level2 = diagnosis_result.get('level2') if diagnosis_result else None
+    level2_list = level1_to_level2.get(selected_level1, []) if selected_level1 else []
+    level3_list = level2_to_level3.get(selected_level2, []) if selected_level2 else []
     return render_template(
         'review.html',
         form_data=form_data,
@@ -421,7 +425,7 @@ def review():
         level1_list=level1_list,
         diagnosis_result=diagnosis_result,
         diagnosis_error=diagnosis_error,
-        dynamic_dropdowns=dynamic_dropdowns
+        level2_list=level2_list,
     )
 
 @app.route('/submit_review', methods=['POST'])
