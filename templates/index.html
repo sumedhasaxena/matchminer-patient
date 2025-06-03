@@ -312,11 +312,11 @@
         }
         
         .progress-container {
-            width: 80%;
-            max-width: 600px;
+            width: 90%;
+            max-width: 700px;
             background: white;
             border-radius: 8px;
-            padding: 20px;
+            padding: 32px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
@@ -362,6 +362,14 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .ellipsis {
+            font-size: 1.5em;
+            font-weight: bold;
+            letter-spacing: 2px;
+            vertical-align: middle;
+            min-width: 2em;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -372,15 +380,15 @@
         <div class="progress-container">
             <div id="diagnosisProgress" class="progress-item pending">
                 <span class="progress-status">Diagnosis Lookup</span>
-                <span class="progress-message">Trying to get the closest oncotree match for the entered diagnosis...</span>
+                <span class="progress-message">Trying to get the closest oncotree match for the entered diagnosis&nbsp;<span class="ellipsis"></span></span>
             </div>
             <div id="additionalInfoProgress" class="progress-item pending">
                 <span class="progress-status">Additional Information</span>
-                <span class="progress-message">Extracting additional information...</span>
+                <span class="progress-message">Extracting additional information&nbsp;<span class="ellipsis"></span></span>
             </div>
             <div id="ocrProgress" class="progress-item pending">
                 <span class="progress-status">Image Processing</span>
-                <span class="progress-message">Parsing any uploaded image(s) to extract genomic data...</span>
+                <span class="progress-message">Parsing any uploaded image(s) to extract genomic data&nbsp;<span class="ellipsis"></span></span>
             </div>
         </div>
     </div>
@@ -884,6 +892,21 @@
                     // Form will submit normally, overlay stays visible until redirect
                 }
                 // If no free text diagnosis, form submits normally without overlay
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+                function animateEllipsis(selector) {
+                    var elements = document.querySelectorAll(selector);
+                    var dots = ['', '.', '..', '...'];
+                    var idx = 0;
+                    setInterval(function() {
+                        elements.forEach(function(el) {
+                            el.textContent = dots[idx % dots.length];
+                        });
+                        idx++;
+                    }, 500);
+                }
+                animateEllipsis('.ellipsis');
             });
         </script>
     </div>
