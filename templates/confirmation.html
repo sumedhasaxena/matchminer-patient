@@ -160,23 +160,23 @@
                 </table>
             </div>
             <div class="section">
-                <h3>Additional Information</h3>
-                <table class="form-table">
-                    <tr>
-                        <td><label for="description">Description:</label></td>
-                        <td colspan="2">
-                            <textarea id="description" name="description" style="height: 120px;" readonly>{{ form_data.description }}</textarea>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div class="section">
                 <h3>Genomic Data</h3>
                 <table class="form-table">
                     <tr>
                         <td><label for="extracted_text">Parsed Genomic data:</label></td>
                         <td>
                             <textarea id="extracted_text" name="extracted_text" rows="12" readonly>{% if session.extracted_text %}{{ session.extracted_text }}{% endif %}</textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="section">
+                <h3>Additional Information</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="description">Description:</label></td>
+                        <td colspan="2">
+                            <textarea id="description" name="description" style="height: 120px;" readonly>{{ form_data.description }}</textarea>
                         </td>
                     </tr>
                 </table>

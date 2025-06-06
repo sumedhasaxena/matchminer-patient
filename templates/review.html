@@ -324,6 +324,21 @@
                 </table>
             </div>
             <div class="section">
+                <h3>Genomic Data</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="extracted_text">Parsed Genomic data:</label></td>
+                        <td>
+                            <textarea id="extracted_text" name="extracted_text" rows="12">{% if session.extracted_text %}{{ session.extracted_text }}{% endif %}</textarea>
+                            <div class="hint-text">
+                                <span class="info-icon">ℹ️</span>
+                                Please review and modify the genomic data if any corrections are required
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="section">
                 <h3>Additional Information</h3>
                 <table class="form-table">
                     <tr>
@@ -334,17 +349,6 @@
                                 <span class="info-icon">ℹ️</span>
                                 To edit additional description, please click on 'Back' button
                             </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div class="section">
-                <h3>Genomic Data</h3>
-                <table class="form-table">
-                    <tr>
-                        <td><label for="extracted_text">Parsed Genomic data:</label></td>
-                        <td>
-                            <textarea id="extracted_text" name="extracted_text" rows="12">{% if session.extracted_text %}{{ session.extracted_text }}{% endif %}</textarea>
                         </td>
                     </tr>
                 </table>

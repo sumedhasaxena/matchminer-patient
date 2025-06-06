@@ -523,17 +523,6 @@
                 </table>
             </div>
             <div class="section">
-                <h3>Additional Information</h3>
-                <table class="form-table">
-                    <tr>
-                        <td><label for="description">Description:</label></td>
-                        <td colspan="2">
-                            <textarea id="description" name="description" style="height: 120px;">{{ form_data.description or '' }}</textarea>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div class="section">
                 <h3>Genomic Data</h3>
                 <table class="form-table">
                     <tr>
@@ -551,6 +540,17 @@
                                     {% endfor %}
                                 {% endif %}
                             </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="section">
+                <h3>Additional Information</h3>
+                <table class="form-table">
+                    <tr>
+                        <td><label for="description">Description:</label></td>
+                        <td colspan="2">
+                            <textarea id="description" name="description" style="height: 120px;">{{ form_data.description or '' }}</textarea>
                         </td>
                     </tr>
                 </table>
