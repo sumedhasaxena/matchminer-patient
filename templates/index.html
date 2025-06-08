@@ -347,6 +347,20 @@
         .progress-item.error {
             color: #e53e3e;
             background: #fff5f5;
+            border: 1px solid #feb2b2;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .progress-item.error .progress-status {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .progress-item.error .progress-message {
+            color: #4a5568;
         }
 
         .progress-status {
@@ -356,6 +370,8 @@
         .progress-message {
             font-size: 14px;
             color: #4a5568;
+            text-align: center;
+            width: 100%;
         }
         
         @keyframes spin {
@@ -363,11 +379,11 @@
             100% { transform: rotate(360deg); }
         }
         .ellipsis {
-            font-size: 1.5em;
-            font-weight: bold;
-            letter-spacing: 2px;
+            font-size: 1.2em;
+            font-weight: normal;
+            letter-spacing: 1px;
             vertical-align: middle;
-            min-width: 2em;
+            min-width: 1.5em;
             display: inline-block;
         }
         .date-input-container {
@@ -466,17 +482,16 @@
         <div class="loading-spinner"></div>
         <div class="loading-text">Processing your request...</div>
         <div class="progress-container">
-            <div id="diagnosisProgress" class="progress-item pending">
-                <span class="progress-status">Diagnosis Lookup</span>
-                <span class="progress-message">Trying to get the closest oncotree match for the entered diagnosis&nbsp;<span class="ellipsis"></span></span>
+            <div class="progress-message" style="text-align: center; margin-bottom: 20px; color: #4a5568;">
+                Estimated time: ~60 seconds.
             </div>
-            <div id="additionalInfoProgress" class="progress-item pending">
-                <span class="progress-status">Additional Information</span>
-                <span class="progress-message">Extracting additional information&nbsp;<span class="ellipsis"></span></span>
+            <div id="processingProgress" class="progress-item running">
+                <!-- <span class="progress-status">Processing</span> -->
+                <span class="progress-message" >Please wait while we analyze diagnosis, extract information, and process genomic data&nbsp;<span class="ellipsis"></span></span>
             </div>
-            <div id="ocrProgress" class="progress-item pending">
-                <span class="progress-status">Image Processing</span>
-                <span class="progress-message">Parsing any uploaded image(s) to extract genomic data&nbsp;<span class="ellipsis"></span></span>
+            <div id="errorMessage" class="progress-item error" style="display: none;">
+                <span class="progress-status">Error</span>
+                <span class="progress-message"></span>
             </div>
         </div>
     </div>
@@ -983,17 +998,20 @@
            document.addEventListener('DOMContentLoaded', updateDiagnosisLevel2);
 
             function validateDiagnosis() {
+                console.log('Validating diagnosis...');
                 const freeTextDiagnosis = document.getElementById('diagnosis_free_text').value.trim();
                 const level1Diagnosis = document.getElementById('diagnosis_level1').value;
-                const level2Diagnosis = document.getElementById('diagnosis_level2').value;
+                const level2Diagnosis = document.getElementById('diagnosis_level2').value;                
                 
                 // Check if either free text or complete advanced diagnosis is provided
                 const hasAdvancedDiagnosis = level1Diagnosis && level2Diagnosis; // Level 3 is optional
                 
                 if (!freeTextDiagnosis && !hasAdvancedDiagnosis) {
                     if (level1Diagnosis && !level2Diagnosis) {
+                        console.log('Validation failed: Level 2 diagnosis required');
                         alert('Please complete the diagnosis selection by choosing a Level 2 diagnosis.');
                     } else {
+                        console.log('Validation failed: No diagnosis provided');
                         alert('Please either enter a free text diagnosis or select a complete diagnosis from Advanced Options (Level 1 and Level 2 required).');
                     }
                     return false;
@@ -1001,6 +1019,7 @@
                 
                 // If both are provided, show warning about using advanced options
                 if (freeTextDiagnosis && hasAdvancedDiagnosis) {
+                    console.log('Both free text and advanced diagnosis provided');
                     if (!confirm('You have entered both free text diagnosis and selected a diagnosis from Advanced Options. The advanced diagnosis selection will be used. Do you want to continue?')) {
                         return false;
                     }
@@ -1008,27 +1027,28 @@
                     document.getElementById('diagnosis_free_text').value = '';
                 }
                 
+                console.log('Diagnosis validation passed');
                 return true;
             }
 
-            // Add back the form submission handler
+            // Update the form submission handler
             document.querySelector('form').addEventListener('submit', function(e) {
-                e.preventDefault(); // Prevent default form submission
-                
                 if (!validateDiagnosis()) {
-                    return; // Stop if validation fails
+                    e.preventDefault(); // Only prevent default if validation fails
+                    return;
                 }
 
-                const freeTextDiagnosis = document.getElementById('diagnosis_free_text').value.trim();
+                // Show loading overlay
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                const errorMessage = document.getElementById('errorMessage');
+                const processingProgress = document.getElementById('processingProgress');
                 
-                if (freeTextDiagnosis) {
-                    // Show loading overlay for free text diagnosis
-                    const loadingOverlay = document.getElementById('loadingOverlay');
-                    loadingOverlay.style.display = 'flex';
-                }
+                // Reset error state
+                errorMessage.style.display = 'none';
+                processingProgress.style.display = '';
                 
-                // If validation passes, submit the form
-                this.submit();
+                // Show overlay
+                loadingOverlay.style.display = 'flex';
             });
 
             // Update the event listeners to clear free text when advanced diagnosis is selected
