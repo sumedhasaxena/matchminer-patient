@@ -553,6 +553,10 @@ def submit_review():
                 f.write(f"{patient_clinical_schema_keys['oncotree_diag_key'] if 'oncotree_diag_key' in patient_clinical_schema_keys else 'DIAGNOSIS'}: {diagnosis_value}\n")
                 f.write(f"{patient_clinical_schema_keys['oncotree_diag_name_key'] if 'oncotree_diag_name_key' in patient_clinical_schema_keys else 'DIAGNOSIS_NAME'}: {diagnosis_value}\n")
                 f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
+                # Write TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE if present in session
+                tmb = session.get('TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE')
+                if tmb is not None:
+                    f.write(f"TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE: {tmb}\n")
                 # Write dynamic dropdowns as key-value pairs
                 for dd in dynamic_dropdowns:
                     f.write(f"{dd['name']}: {dd['selected']}\n")
