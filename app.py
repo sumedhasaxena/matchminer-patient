@@ -207,6 +207,7 @@ def process_uploaded_images(unique_id, image_files):
     extracted_text = None
     if image_paths:
         try:
+            logger.info("Begin simulation of OCR extraction...")
             # Run surya_ocr_text_extract.py with all image paths
             result = subprocess.run(
                 ['python', 'patient_data/surya_ocr_text_extract.py'] + image_paths + [unique_id],
@@ -241,95 +242,142 @@ def back_to_index():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        # Generate unique ID first
-        unique_id = generate_unique_id() 
-        
-        # Get form data
-        form_data = request.form.to_dict()
-        gender = form_data.get('gender', '')
-        age = form_data.get('age', '')
-        diagnosis_free_text = form_data.get('diagnosis_free_text', '')
-        report_date = form_data.get('report_date', '')
-        description = form_data.get('description', '')
+        try:
+            # Generate unique ID first
+            unique_id = generate_unique_id() 
+            logger.info(f"Generated unique ID for new submission: {unique_id}")
+            
+            # Get form data
+            form_data = request.form.to_dict()
+            gender = form_data.get('gender', '')
+            age = form_data.get('age', '')
+            diagnosis_free_text = form_data.get('diagnosis_free_text', '')
+            report_date = form_data.get('report_date', '')
+            description = form_data.get('description', '')
 
-        # Use OCR to extract text from images
-        image_files = request.files.getlist('genomic_images')
-        image_filenames, extracted_text = process_uploaded_images(unique_id, image_files)
-        
-        # Store extracted text in session if available
-        if extracted_text:
-            session['extracted_text'] = extracted_text
+            # Use OCR to extract text from images
+            image_files = request.files.getlist('genomic_images')
+            try:
+                image_filenames, extracted_text = process_uploaded_images(unique_id, image_files)
+                logger.info(f"Processed {len(image_filenames)} images for {unique_id}")
+            except Exception as e:
+                logger.exception(f"Error processing images for {unique_id}: {str(e)}")
+                raise
+            
+            # Store extracted text in session if available
+            if extracted_text:
+                session['extracted_text'] = extracted_text
+                logger.info(f"Stored extracted text in session for {unique_id}")
 
-        # Get diagnosis result
-        if diagnosis_free_text:
-            session['free_text_diagnosis'] = diagnosis_free_text
-            # Get oncotree diagnosis match using AI
-            diagnosis_result, error = get_diagnosis_result(
-                unique_id=unique_id,
-                diagnosis_free_text=diagnosis_free_text
-            )
-            # Extract additional clinical/genomicinfo from AI   
-            additional_info_dict = get_additional_info(unique_id, description)
-
-            # Extract and store individual values from additional info
-            for key, schema_key in patient_clinical_schema_keys.items():
-                if schema_key in additional_info_dict:
-                    # Store each value directly in session using the schema key
-                    session[schema_key] = additional_info_dict[schema_key]
-                    logger.info(f"Stored {schema_key} in session for {unique_id}: {additional_info_dict[schema_key]}")
-        
-        else: # When diagnosis was selected using dropdowns
-            diagnosis_result, error = get_diagnosis_result(
-                unique_id=unique_id,
-                diagnosis_level1=form_data.get('diagnosis_level1', ''),
-                diagnosis_level2=form_data.get('diagnosis_level2', ''),
-                diagnosis_level3=form_data.get('diagnosis_level3', '')
-            )
-
-            # Handle dynamic diagnosis dropdowns only when using dropdown selection
-            if diagnosis_result and not error:
-                # Get the appropriate diagnosis level for dropdown rules
-                diagnosis_for_rules = diagnosis_result.get('level2') or diagnosis_result.get('level1')
+            # Get diagnosis result
+            if diagnosis_free_text:
+                session['free_text_diagnosis'] = diagnosis_free_text
+                logger.info(f"Processing free text diagnosis for {unique_id}: {diagnosis_free_text}")
                 
-                if diagnosis_for_rules in DIAGNOSIS_DROPDOWN_RULES:
-                    # Get the dropdowns defined for this diagnosis
-                    dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]['dropdowns']
+                try:
+                    # Get oncotree diagnosis match using AI
+                    diagnosis_result, error = get_diagnosis_result(
+                        unique_id=unique_id,
+                        diagnosis_free_text=diagnosis_free_text
+                    )
+
+                    # Check for AI service errors
+                    if isinstance(diagnosis_result, dict) and 'error' in diagnosis_result:
+                        logger.error(f"AI service error for {unique_id}: {diagnosis_result['message']}")
+                        flash(diagnosis_result['message'])
+                        return redirect(url_for('index'))
+
+                    # Extract additional clinical/genomic info from AI   
+                    try:
+                        additional_info_dict = get_additional_info(unique_id, description)
+                        logger.info(f"Retrieved additional info for {unique_id}")
+                    except Exception as e:
+                        logger.exception(f"Error getting additional info for {unique_id}: {str(e)}")
+                        raise
                     
-                    # For each dropdown, check if it has a value in form_data
-                    for dropdown in dropdowns:
-                        # Find the schema key for this dropdown
-                        schema_key = None
-                        for key, value in patient_clinical_schema_keys.items():
-                            if value == dropdown:
-                                schema_key = value
-                                break
+                    # Check for AI service errors in additional info
+                    if isinstance(additional_info_dict, dict) and 'error' in additional_info_dict:
+                        logger.error(f"AI service error in additional info for {unique_id}: {additional_info_dict['message']}")
+                        flash(additional_info_dict['message'])
+                        return redirect(url_for('index'))
+
+                    # Extract and store individual values from additional info
+                    for key, schema_key in patient_clinical_schema_keys.items():
+                        if schema_key in additional_info_dict:
+                            session[schema_key] = additional_info_dict[schema_key]
+                            logger.info(f"Stored {schema_key} in session for {unique_id}: {additional_info_dict[schema_key]}")
+                
+                except Exception as e:
+                    logger.exception(f"Error processing diagnosis for {unique_id}: {str(e)}")
+                    raise
+            
+            else: # When diagnosis was selected using dropdowns
+                try:
+                    diagnosis_result, error = get_diagnosis_result(
+                        unique_id=unique_id,
+                        diagnosis_level1=form_data.get('diagnosis_level1', ''),
+                        diagnosis_level2=form_data.get('diagnosis_level2', ''),
+                        diagnosis_level3=form_data.get('diagnosis_level3', '')
+                    )
+                    logger.info(f"Processed dropdown diagnosis for {unique_id}")
+
+                    # Handle dynamic diagnosis dropdowns only when using dropdown selection
+                    if diagnosis_result and not error:
+                        # Get the appropriate diagnosis level for dropdown rules
+                        diagnosis_for_rules = diagnosis_result.get('level2') or diagnosis_result.get('level1')
                         
-                        if schema_key and dropdown in form_data:
-                            # Store the dropdown value in session using the schema key
-                            session[schema_key] = form_data[dropdown]
-                            logger.info(f"Stored dynamic dropdown {schema_key} in session for {unique_id}: {form_data[dropdown]}")
+                        if diagnosis_for_rules in DIAGNOSIS_DROPDOWN_RULES:
+                            # Get the dropdowns defined for this diagnosis
+                            dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]['dropdowns']
+                            
+                            # For each dropdown, check if it has a value in form_data
+                            for dropdown in dropdowns:
+                                # Find the schema key for this dropdown
+                                schema_key = None
+                                for key, value in patient_clinical_schema_keys.items():
+                                    if value == dropdown:
+                                        schema_key = value
+                                        break
+                                
+                                if schema_key and dropdown in form_data:
+                                    # Store the dropdown value in session using the schema key
+                                    session[schema_key] = form_data[dropdown]
+                                    logger.info(f"Stored dynamic dropdown {schema_key} in session for {unique_id}: {form_data[dropdown]}")
+                
+                except Exception as e:
+                    logger.exception(f"Error processing dropdown diagnosis for {unique_id}: {str(e)}")
+                    raise
 
-        if error:
-            flash(error)
+            if error:
+                logger.error(f"Validation error for {unique_id}: {error}")
+                flash(error)
+                return redirect(url_for('index'))
+
+            # Store all form data in session for review page
+            session['form_data'] = {
+                'unique_id': unique_id,
+                'gender': gender,
+                'age': age,
+                'report_date': report_date,
+                'description': description,
+                'genomic_images': image_filenames
+            }
+            session['diagnosis_result'] = diagnosis_result
+            logger.info(f"Stored form data and diagnosis result in session for {unique_id}")
+
+            # Log all session values after processing
+            logger.info('Session values after form submission:')
+            for key, value in session.items():
+                logger.info(f'{key}: {value}')
+
+            return redirect(url_for('review'))
+
+        except Exception as e:
+            logger.exception(f"Error in index POST for ID {form_data.get('unique_id', 'unknown')}: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+            logger.error(f"Exception args: {e.args}")
+            flash(f"An error occurred while processing your request: {str(e)}")
             return redirect(url_for('index'))
-       
-
-        # Store all form data in session for review page
-        session['form_data'] = {
-            'unique_id': unique_id,
-            'gender': gender,
-            'age': age,
-            'report_date': report_date,
-            'description': description,
-            'genomic_images': image_filenames
-        }
-        session['diagnosis_result'] = diagnosis_result
-
-        # Log all session values after processing
-        logger.info('Session values after form submission:')
-        for key, value in session.items():
-            logger.info(f'{key}: {value}')
-        return redirect(url_for('review'))
 
     # If this is a direct GET (not from review/back), clear the session
     # You can use a query param or referrer check if you want to preserve session for "back" navigation
@@ -446,6 +494,7 @@ def submit_review():
         # Get the stored form data
         form_data = session.get('form_data')
         if not form_data:
+            logger.error("No form data found in session during submit_review")
             return redirect(url_for('index'))
         
         # Update form data with selected diagnosis
@@ -455,12 +504,32 @@ def submit_review():
         
         # Get the unique ID
         unique_id = form_data.get('unique_id')
+        logger.info(f"Processing review submission for ID: {unique_id}")
+        
+        # Get the updated OCR-extracted text from the form, in case user manually updated the text
+        updated_extracted_text = request.form.get('extracted_text', '')
+        
+        # Update session with the new extracted text
+        session['extracted_text'] = updated_extracted_text
+        
+        # Save the updated extracted text to the EXTRACTED_TEXT folder
+        extracted_text_file = os.path.join(EXTRACTED_TEXT, f"{unique_id}.txt")
+        try:
+            with open(extracted_text_file, 'w', encoding='utf-8') as f:
+                f.write(updated_extracted_text)
+            logger.info(f"Successfully updated extracted text file for {unique_id}")
+        except IOError as e:
+            logger.error(f"Failed to write extracted text file for {unique_id}: {str(e)}")
+            raise
         
         # Determine the lowest level diagnosis
         diagnosis_value = diagnosis_level3 or diagnosis_level2
         
         # Retrieve dynamic_dropdowns from session (as built for the review page)
         session_dynamic_dropdowns = session.get('dynamic_dropdowns', [])
+        if not session_dynamic_dropdowns:
+            logger.warning(f"No dynamic dropdowns found in session for {unique_id}")
+        
         dynamic_dropdowns = []
         for dd in session_dynamic_dropdowns:
             key = dd['name']
@@ -472,30 +541,33 @@ def submit_review():
                 'selected': selected_value
             })
 
-        # Save data to a text file named after unique_id
+        # Save data to a text file named after unique_id in TEXT_FOLDER
         data_file = f"{unique_id}.txt"
         data_file_path = os.path.abspath(os.path.join(TEXT_FOLDER, data_file))
-        with open(data_file_path, 'w', encoding='utf-8') as f:
-            f.write(f"{patient_clinical_schema_keys['sample_id_key']}: {unique_id}\n")
-            f.write(f"{patient_clinical_schema_keys['mrn_key']}: {unique_id}\n")
-            f.write(f"{patient_clinical_schema_keys['gender_key']}: {form_data.get('gender', '')}\n")
-            f.write(f"{patient_clinical_schema_keys['age_key'] if 'age_key' in patient_clinical_schema_keys else 'AGE'}: {form_data.get('age', '')}\n")
-            f.write(f"{patient_clinical_schema_keys['oncotree_diag_key'] if 'oncotree_diag_key' in patient_clinical_schema_keys else 'DIAGNOSIS'}: {diagnosis_value}\n")
-            f.write(f"{patient_clinical_schema_keys['oncotree_diag_name_key'] if 'oncotree_diag_name_key' in patient_clinical_schema_keys else 'DIAGNOSIS_NAME'}: {diagnosis_value}\n")
-            f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
-            # Write dynamic dropdowns as key-value pairs
-            for dd in dynamic_dropdowns:
-                f.write(f"{dd['name']}: {dd['selected']}\n")
-            f.write("---\n")
-        
-        # Process the form data as needed
-        # ... your existing form processing logic ...
+        try:
+            with open(data_file_path, 'w', encoding='utf-8') as f:
+                f.write(f"{patient_clinical_schema_keys['sample_id_key']}: {unique_id}\n")
+                f.write(f"{patient_clinical_schema_keys['mrn_key']}: {unique_id}\n")
+                f.write(f"{patient_clinical_schema_keys['gender_key']}: {form_data.get('gender', '')}\n")
+                f.write(f"{patient_clinical_schema_keys['age_key'] if 'age_key' in patient_clinical_schema_keys else 'AGE'}: {form_data.get('age', '')}\n")
+                f.write(f"{patient_clinical_schema_keys['oncotree_diag_key'] if 'oncotree_diag_key' in patient_clinical_schema_keys else 'DIAGNOSIS'}: {diagnosis_value}\n")
+                f.write(f"{patient_clinical_schema_keys['oncotree_diag_name_key'] if 'oncotree_diag_name_key' in patient_clinical_schema_keys else 'DIAGNOSIS_NAME'}: {diagnosis_value}\n")
+                f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
+                # Write dynamic dropdowns as key-value pairs
+                for dd in dynamic_dropdowns:
+                    f.write(f"{dd['name']}: {dd['selected']}\n")
+                f.write("---\n")
+            logger.info(f"Successfully wrote clinical data file for {unique_id}")
+        except IOError as e:
+            logger.error(f"Failed to write clinical data file for {unique_id}: {str(e)}")
+            raise
         
         # Clear session data
         session.pop('form_data', None)
         session.pop('free_text_diagnosis', None)
         session.pop('diagnosis_result', None)
         session.pop('diagnosis_error', None)
+        logger.info(f"Cleared session data for {unique_id}")
         
         # Redirect to confirmation page with banner and read-only fields
         flash_msg = f"MatchMiner ID: {unique_id}\nPatient data recorded successfully. Please save the MatchMiner ID for future reference"
@@ -516,7 +588,9 @@ def submit_review():
         )
         
     except Exception as e:
-        flash(f"Error submitting diagnosis: {str(e)}")
+        logger.exception(f"Error in submit_review for ID {form_data.get('unique_id', 'unknown')}: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        logger.error(f"Exception args: {e.args}")
         return redirect(url_for('index'))
 
 if __name__ == '__main__':
