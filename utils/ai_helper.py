@@ -38,32 +38,38 @@ def parse_ai_response(ai_response):
 
 def send_ai_request(id, prompt):
     req_body = {
-    "model":config.LLM_AI_MODEL,
-    "messages":[
-        {"role": "system", "content": "You are a biomedical researcher."},
-        {
-          "role":"user", "content": prompt
-        }
-    ],
-    "temperature": 0.5, #lower value of temperature results in more deterministric responses
-    "max_tokens": 8192,
-    "response_format": {
-    "type": "json_object"
-    },
-    "stream":False
+        "model": config.LLM_AI_MODEL,
+        "messages": [
+            {"role": "system", "content": "You are a biomedical researcher."},
+            {
+                "role": "user", "content": prompt
+            }
+        ],
+        "temperature": 0.5,
+        "max_tokens": 8192,
+        "response_format": {
+            "type": "json_object"
+        },
+        "stream": False
     }
     req_body_json = json.dumps(req_body)
     logger.debug(f"AI request | ID:{id} | {req_body_json}")
     endpoint_url = f'{urllib.parse.urljoin(f"{config.GPU_SERVER_HOSTNAME}:{config.AI_PORT}", config.CHAT_ENDPOINT)}'
     print(endpoint_url)
 
-    response = requests.post(endpoint_url, data=req_body_json, headers={"Content-Type":"application/json"})
-    response.raise_for_status()
-
-    print(response.status_code)
-    ai_response = response.json()
-    logger.debug(f"AI response | ID:{id} | {ai_response}")
-    return ai_response
+    try:
+        response = requests.post(endpoint_url, data=req_body_json, headers={"Content-Type": "application/json"})
+        response.raise_for_status()
+        print(response.status_code)
+        ai_response = response.json()
+        logger.debug(f"AI response | ID:{id} | {ai_response}")
+        return ai_response
+    except requests.exceptions.ConnectionError:
+        logger.error(f"Connection error while making AI request | ID:{id}")
+        return {"error": "connection_error", "message": "Unable to connect to AI service. Please try again later."}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error while making AI request | ID:{id} | Error: {str(e)}")
+        return {"error": "request_error", "message": f"Error communicating with AI service: {str(e)}"}
 
 def get_ai_prompt_for_patient_genomic_criteria(genomic_data):
     prompt = f"""Task: Convert the following text about genomic report of a patient sample into JSON format as described below:
@@ -169,6 +175,7 @@ def get_additional_info(mmid:str, additional_info: str)-> dict:
 
 def get_additional_info_prompt(additional_info):
     prompt = f"""Task: Analyze the provided description and identify the status of specific conditions. Only include conditions mentioned in the description and omit any absent fields.
+    Add HER2/ER/PR status if description mentions TNBC.
 
 Conditions and Expected Output:
 HER2: HER2_STATUS - Positive/Negative/Unknown
