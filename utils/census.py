@@ -17,6 +17,5 @@ def load_gene_to_ref_seq_mapping():
         if nm_matches:
             ref_seq_id = nm_matches[0]
             gene_to_ref_seq_id_mapping[row['Gene Symbol']] = ref_seq_id
-        print(gene_to_ref_seq_id_mapping)
     return gene_to_ref_seq_id_mapping
 

@@ -13,6 +13,7 @@ from utils.census import load_gene_to_ref_seq_mapping
 
 extracted_text_dir = 'extracted_text'
 genomic_json_dir = 'genomic_json'
+clinical_txt_dir = 'clinical_data'
 
 # Set up Loguru to log to a file
 logger.add("logs/get_patient_genomic_data.log", rotation="10 MB", retention="10 days", enqueue=True)
@@ -34,11 +35,8 @@ def get_and_append_gene_from_census(text:str):
         if genes:
             modified_lines.append(line + " Possible Gene(s): " + ", ".join(genes)) #append the gene names looked up from census to every line of extracted text.
         else:
-            modified_lines.append(line)
-    logger.info(modified_lines)                           
-    return modified_lines
-
-
+            modified_lines.append(line)            
+    return "\n".join(modified_lines)
 
 def get_and_append_gene_from_ncbi(text:str):
     lines = text.strip().split('\n')
@@ -61,23 +59,36 @@ def get_and_append_gene_from_ncbi(text:str):
     return modified_lines
 
         
-def get_patent_genomic_data(genomic_text:str):
-   
-   modified_lines = get_and_append_gene_from_census(genomic_text)
-   response = ai.get_patient_genomic_criteria('case1', modified_lines)
+def get_patent_genomic_data(genomic_text:str, file_name:str):
+   response = ai.get_patient_genomic_criteria(file_name, genomic_text)
    return response
 
 def main(text_file: str):
+    combined_content = ""
     current_dir = os.path.dirname(__file__)
-    TXT_FILE_PATH = os.path.join(current_dir, extracted_text_dir, text_file)
-    print(f'Looking for file in {TXT_FILE_PATH}')
-    with open(TXT_FILE_PATH, 'r') as file:
-        content = file.read()
-        response = get_patent_genomic_data(content)
-        output_file = os.path.join(current_dir, genomic_json_dir, f'{os.path.splitext(text_file)[0]}.json')
-        with open(output_file, "w") as json_file: 
-            json.dump(response, json_file)
-        print(f'JSON written to {output_file}')
+
+    # read OCR extracted content
+    OCR_TXT_FILE_PATH = os.path.join(current_dir, extracted_text_dir, text_file)
+    print(f'Looking for file in {OCR_TXT_FILE_PATH}')
+    with open(OCR_TXT_FILE_PATH, 'r') as file:
+        ocr_content = file.read()        
+        modified_lines = get_and_append_gene_from_census(ocr_content)
+        combined_content += modified_lines
+
+    # read clinical data
+    CLINICAL_TXT_FILE_PATH = os.path.join(current_dir, clinical_txt_dir, text_file)
+    print(f'Looking for file in {CLINICAL_TXT_FILE_PATH}')
+    with open(CLINICAL_TXT_FILE_PATH, 'r') as file:
+        clinical_content = file.read()
+        combined_content += clinical_content
+    
+    logger.info(f"Combined content for {text_file}: {combined_content}")
+        
+    response = get_patent_genomic_data(combined_content, text_file)
+    output_file = os.path.join(current_dir, genomic_json_dir, f'{os.path.splitext(text_file)[0]}.json')
+    with open(output_file, "w") as json_file: 
+        json.dump(response, json_file)
+    print(f'JSON written to {output_file}')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert plain text genomic data to matchminer compliant JSON structure.")

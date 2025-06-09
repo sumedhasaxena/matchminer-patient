@@ -114,7 +114,7 @@ def convert_to_clinical_data_format(text_file):
             elif key_id == "test_name_key":
                 data[official_key] = "oncopanel"
             elif official_key in clinical_data:
-                data[official_key] = int(clinical_data[official_key]) if key_id == "tmb_key" else clinical_data[official_key]
+                data[official_key] = float(clinical_data[official_key]) if key_id == "tmb_key" else clinical_data[official_key]
     #todo: IDH wildtype and TMB to be moved to genomic data capture logic
     return data
 

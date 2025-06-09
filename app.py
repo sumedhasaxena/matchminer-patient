@@ -400,42 +400,17 @@ def index():
         # ... any other context ...
     )
 
-# def run_script_in_background(script_path, args, log_file, start_msg, finish_msg):
-#     def runner():
-#         logger.info(start_msg)
-#         process = subprocess.Popen(
-#             ['python', script_path] + args,
-#             stdout=open(log_file, 'a'),
-#             stderr=subprocess.STDOUT
-#         )
-#         process.wait()
-#         logger.info(finish_msg)
-#     threading.Thread(target=runner, daemon=True).start()
-
-
-# def run_chained_scripts(first_script, first_args, first_log, first_start_msg, first_finish_msg,
-#                         second_script, second_args, second_log, second_start_msg, second_finish_msg):
-#     def runner():
-#         logger.info(first_start_msg)
-#         process = subprocess.Popen(
-#             ['python', first_script] + first_args,
-#             stdout=open(first_log, 'a'),
-#             stderr=subprocess.STDOUT
-#         )
-#         process.wait()
-#         logger.info(first_finish_msg)
-#         if process.returncode == 0:
-#             logger.info(second_start_msg)
-#             process2 = subprocess.Popen(
-#                 ['python', second_script] + second_args,
-#                 stdout=open(second_log, 'a'),
-#                 stderr=subprocess.STDOUT
-#             )
-#             process2.wait()
-#             logger.info(second_finish_msg)
-#         else:
-#             logger.error(f"{first_script} failed with return code {process.returncode}. {second_script} will not be run.")
-#     threading.Thread(target=runner, daemon=True).start()
+def run_script_in_background(script_path, args, log_file, start_msg, finish_msg):
+    def runner():
+        logger.info(start_msg)
+        process = subprocess.Popen(
+            ['python', script_path] + args,
+            stdout=open(log_file, 'a'),
+            stderr=subprocess.STDOUT
+        )
+        process.wait()
+        logger.info(finish_msg)
+    threading.Thread(target=runner, daemon=True).start()
 
 @app.route('/review', methods=['GET'])
 def review():
@@ -450,11 +425,12 @@ def review():
 
     for session_key in session.keys():
         if session_key in value_to_key:
-            dropdown_key = value_to_key[session_key]
+            dropdown_key = value_to_key[session_key]            
             # Search all diagnoses and their dropdowns for a match
             for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
                 for dropdown in rule['dropdowns']:
                     if dropdown['name'] == dropdown_key:
+                        logger.info(f"Found dropdown match: {session_key} -> {dropdown_key}")
                         dynamic_dropdowns.append({
                             'name': session_key,
                             'label': dropdown['label'],
@@ -554,7 +530,7 @@ def submit_review():
                 f.write(f"{patient_clinical_schema_keys['oncotree_diag_name_key'] if 'oncotree_diag_name_key' in patient_clinical_schema_keys else 'DIAGNOSIS_NAME'}: {diagnosis_value}\n")
                 f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
                 # Write TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE if present in session
-                tmb = session.get('TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE')
+                tmb = session.get(patient_clinical_schema_keys['tmb_key'])
                 if tmb is not None:
                     f.write(f"TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE: {tmb}\n")
                 # Write dynamic dropdowns as key-value pairs
@@ -565,6 +541,47 @@ def submit_review():
         except IOError as e:
             logger.error(f"Failed to write clinical data file for {unique_id}: {str(e)}")
             raise
+        
+        # Start background processes to run get_patient_clinical_data.py and get_patient_genomic_data.py
+        clinical_script_path = os.path.join(os.path.dirname(__file__), 'patient_data', 'get_patient_clinical_data.py')
+        genomic_script_path = os.path.join(os.path.dirname(__file__), 'patient_data', 'get_patient_genomic_data.py')
+        
+        clinical_log_file = os.path.join(os.path.dirname(__file__), 'logs', 'get_patient_clinical_data.log')
+        genomic_log_file = os.path.join(os.path.dirname(__file__), 'logs', 'get_patient_genomic_data.log')
+        
+        clinical_start_msg = f"Starting clinical data conversion to MatchMiner format for {unique_id}"
+        clinical_finish_msg = f"Completed clinical data conversion to MatchMiner format for {unique_id}"
+        
+        genomic_start_msg = f"Starting genomic data conversion to MatchMiner format for {unique_id}"
+        genomic_finish_msg = f"Completed genomic data conversion to MatchMiner format for {unique_id}"
+        
+        # Start clinical data processing
+        try:
+            run_script_in_background(
+                script_path=clinical_script_path,
+                args=[data_file],  # Pass the clinical data text file name as argument
+                log_file=clinical_log_file,
+                start_msg=clinical_start_msg,
+                finish_msg=clinical_finish_msg
+            )
+            logger.info(f"Started background clinical data processing for {unique_id}")
+        except Exception as e:
+            logger.error(f"Failed to start background clinical data processing for {unique_id}: {str(e)}")
+            # Don't raise the exception here to avoid breaking the user flow
+        
+        # Start genomic data processing
+        try:
+            run_script_in_background(
+                script_path=genomic_script_path,
+                args=[data_file],  # Pass the extracted text file name as argument (same unique_id.txt)
+                log_file=genomic_log_file,
+                start_msg=genomic_start_msg,
+                finish_msg=genomic_finish_msg
+            )
+            logger.info(f"Started background genomic data processing for {unique_id}")
+        except Exception as e:
+            logger.error(f"Failed to start background genomic data processing for {unique_id}: {str(e)}")
+            # Don't raise the exception here to avoid breaking the user flow
         
         # Clear session data
         session.pop('form_data', None)
