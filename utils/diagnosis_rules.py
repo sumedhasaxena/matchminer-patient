@@ -6,7 +6,7 @@ DIAGNOSIS_DROPDOWN_RULES = {
         'dropdowns': [
             {
                 'label': 'IDH wildtype',
-                'name': 'idh_wildtype',
+                'name': 'idh_wildtype_key',
                 'values': ['True', 'False']
             },
             {
