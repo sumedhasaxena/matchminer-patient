@@ -9,9 +9,6 @@ import argparse
 from datetime import datetime
 from loguru import logger
 from patient_data.patient_clinical_data_config import patient_clinical_schema_keys
-import subprocess
-import threading
-
 # Set up Loguru to log to a file (e.g., logs/app.log)
 logger.add("logs/app.log", rotation="10 MB", retention="10 days", enqueue=True)
 
@@ -20,10 +17,15 @@ clinical_json_dir = 'clinical_json'
 
 def get_oncotree_diagnosis(mmid, value):
     level_1_diagnosis, level_2_diagnosis, level_3_diagnosis, mapping_l1_all, level1_to_level2, level2_to_level3 = onct.get_all_oncotree_data()
-    
     # First get level 1 diagnosis
     result = ai.get_level1_diagnosis_from_free_text(mmid, {value}, level_1_diagnosis)
-    level1_diagnosis = result['oncotree_diagnosis']
+    
+    # Check for connection errors in the AI response
+    if isinstance(result, dict) and 'error' in result:
+        logger.error(f"MMID: {mmid} | AI service error: {result.get('message', 'Unknown error')}")
+        raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
+    
+    level1_diagnosis = result.get('oncotree_diagnosis')
     print(level1_diagnosis)
     
     if not level1_diagnosis or level1_diagnosis.lower() == "other":
@@ -33,8 +35,14 @@ def get_oncotree_diagnosis(mmid, value):
     # Get child diagnosis
     child_oncotree_values = mapping_l1_all[level1_diagnosis]
     result = ai.get_child_level_diagnosis_from_clinical_condition(mmid, child_oncotree_values, value)
-    child_diagnosis = result.get('oncotree_diagnosis', None)
     
+    # Check for connection errors in the child diagnosis response
+    if isinstance(result, dict) and 'error' in result:
+        logger.error(f"MMID: {mmid} | AI service error in child diagnosis: {result.get('message', 'Unknown error')}")
+        raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
+    
+    child_diagnosis = result.get('oncotree_diagnosis', None)
+    logger.info(f"Child diagnosis: {child_diagnosis}")
     if not child_diagnosis:
         return {
             'level1': level1_diagnosis,
@@ -42,23 +50,24 @@ def get_oncotree_diagnosis(mmid, value):
             'level3': None
         }
     
-    # Check if child_diagnosis is in level2 or level3
-    if child_diagnosis in level2_to_level3:
-        # It's a level2 diagnosis
-        return {
+    # Check if child_diagnosis is in level2
+    for level1, level2s in level1_to_level2.items():
+        if child_diagnosis in level2s:
+            # It's a level2 diagnosis
+            return {
             'level1': level1_diagnosis,
             'level2': child_diagnosis,
             'level3': None
         }
-    else:
-        # It's a level3 diagnosis, find its parent level2
-        for level2, level3s in level2_to_level3.items():
-            if child_diagnosis in level3s:
-                return {
-                    'level1': level1_diagnosis,
-                    'level2': level2,
-                    'level3': child_diagnosis
-                }
+   
+    # Check if child_diagnosis is in level3. It's a level3 diagnosis, find its parent level2
+    for level2, level3s in level2_to_level3.items():
+        if child_diagnosis in level3s:
+            return {
+                'level1': level1_diagnosis,
+                'level2': level2,
+                'level3': child_diagnosis
+            }
     
     # If we get here, something went wrong
     logger.error(f"MMID: {mmid} | Could not determine level for child diagnosis: {child_diagnosis}")
@@ -106,8 +115,6 @@ def convert_to_clinical_data_format(text_file):
                 data[official_key] = "alive"
             elif key_id in ["oncotree_diag_name_key","oncotree_diag_key"]:
                 data[official_key] = clinical_data[official_key]
-                #to be used if we need AI to get the oncotree diagnosis, from a free text field DIAGNOSIS
-                #data[official_key] = get_oncotree_diagnosis(text_file, clinical_data["DIAGNOSIS"])
             elif key_id == "report_date_key":
                 date_obj = datetime.strptime(clinical_data[official_key], "%Y-%m-%d")    
                 data[official_key] = date_obj.strftime("%a, %d %b %Y 10:00:00 GMT")
@@ -119,6 +126,18 @@ def convert_to_clinical_data_format(text_file):
     return data
 
 def get_additional_info(mmid, additional_info):
+    # logger.info("Begin simulation of additional info extraction...")
+    # time.sleep(20)  # Delay for 10 seconds
+    # logger.info("Simulation complete...")
+    # additional_info_dict = {
+    # "IDH_WILDTYPE": "True",
+    # "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 2.83,
+    # "MGMT_PROMOTER_STATUS": "Unmethylated",  
+    # "HER2_STATUS": "Negative",
+    # "ER_STATUS": "Negative",
+    # "PR_STATUS": "Negative",
+    # "PDL1_STATUS": "Low"
+    # }
     additional_info_dict = ai.get_additional_info(mmid, additional_info)
     return additional_info_dict
 
