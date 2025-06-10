@@ -51,7 +51,7 @@ def get_and_append_gene_from_ncbi(text:str):
                 for gene_names in gene_name_matches:
                     genes.append(gene_names) 
             except Exception as e:
-                print(f"Error fetching gene name for {ref_seq_id}: {e}")
+                logger.error(f"Error fetching gene name for {ref_seq_id}: {e}")
         if genes:
             modified_lines.append(line + " Possible Gene(s): " + ", ".join(genes))
                     
@@ -73,7 +73,7 @@ def main(text_file: str):
 
     # read OCR extracted content
     OCR_TXT_FILE_PATH = os.path.join(current_dir, extracted_text_dir, text_file)
-    print(f'Looking for file in {OCR_TXT_FILE_PATH}')
+    logger.info(f'Looking for file in {OCR_TXT_FILE_PATH}')
     with open(OCR_TXT_FILE_PATH, 'r') as file:
         ocr_content = file.read()        
         modified_lines = get_and_append_gene_from_census(ocr_content)
@@ -81,7 +81,7 @@ def main(text_file: str):
 
     # read clinical data
     CLINICAL_TXT_FILE_PATH = os.path.join(current_dir, clinical_txt_dir, text_file)
-    print(f'Looking for file in {CLINICAL_TXT_FILE_PATH}')
+    logger.info(f'Looking for file in {CLINICAL_TXT_FILE_PATH}')
     with open(CLINICAL_TXT_FILE_PATH, 'r') as file:
         clinical_content = file.read()
         combined_content += clinical_content
@@ -92,7 +92,7 @@ def main(text_file: str):
     output_file = os.path.join(current_dir, genomic_json_dir, f'{os.path.splitext(text_file)[0]}.json')
     with open(output_file, "w") as json_file: 
         json.dump(response, json_file)
-    print(f'JSON written to {output_file}')
+    logger.info(f'JSON written to {output_file}')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert plain text genomic data to matchminer compliant JSON structure.")

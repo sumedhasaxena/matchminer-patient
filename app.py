@@ -115,7 +115,7 @@ class BackgroundProcessor:
     
     @staticmethod
     def run_script_in_background(script_path: str, args: List[str], log_file: str, 
-                                start_msg: str, finish_msg: str, type: str) -> None:
+                                start_msg: str, finish_msg: str) -> None:
         """Run a script in the background with logging"""
         def runner():
             logger.info(start_msg)
@@ -157,7 +157,13 @@ class BackgroundProcessor:
         
         for config in processing_configs:
             try:
-                BackgroundProcessor.run_script_in_background(**config)
+                BackgroundProcessor.run_script_in_background(
+                    script_path=config['script_path'],
+                    args=config['args'],
+                    log_file=config['log_file'],
+                    start_msg=config['start_msg'],
+                    finish_msg=config['finish_msg']
+                )
                 logger.info(f"Started background {config['type']} data processing for {unique_id}")
             except Exception as e:
                 logger.error(f"Failed to start {config['type']} data processing for {unique_id}: {str(e)}")
@@ -249,17 +255,35 @@ class DataProcessor:
                         extracted_text = f.read()
                     logger.info(f"OCR extraction completed for {unique_id}")
                     return image_filenames, extracted_text
-            except subprocess.CalledProcessError as e:
-                    logger.error(f"OCR processing failed for {unique_id}: {e.stderr}")
+                else:
+                    logger.warning(f"Extracted text file not found for {unique_id}")
                     return image_filenames, None
+            except subprocess.CalledProcessError as e:
+                logger.error(f"OCR processing failed for {unique_id}: {e.stderr}")
+                return image_filenames, None
             except Exception as e:
                 logger.error(f"OCR processing failed for {unique_id}: {str(e)}")
                 return image_filenames, None
-        else:
-                logger.warning(f"Extracted text file not found for {unique_id}")
-                return image_filenames, None
             
         return image_filenames, None
+
+    @staticmethod
+    def delete_uploaded_images(image_paths: List[str], unique_id: str) -> None:
+        """Delete uploaded images after OCR extraction is completed"""
+        deleted_count = 0
+        for image_path in image_paths:
+            try:
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+                    deleted_count += 1
+                    logger.debug(f"Deleted image: {image_path}")
+            except OSError as e:
+                logger.error(f"Failed to delete image {image_path} for {unique_id}: {str(e)}")
+        
+        if deleted_count > 0:
+            logger.info(f"Deleted {deleted_count} uploaded images for {unique_id}")
+        else:
+            logger.warning(f"No images were deleted for {unique_id}")
 
 class DiagnosisProcessor:
     """Handles diagnosis processing and validation"""
@@ -640,6 +664,12 @@ def submit_review():
         
         # Start background processing
         BackgroundProcessor.start_data_processing(unique_id, data_file)
+        
+        # Delete uploaded images after successful submission and background processing start
+        image_filenames = form_data.get('genomic_images', [])
+        if image_filenames:
+            image_paths = [os.path.join(Config.IMAGE_FOLDER, filename) for filename in image_filenames]
+            DataProcessor.delete_uploaded_images(image_paths, unique_id)
         
         # Clear session data
         session_keys_to_clear = ['form_data', 'free_text_diagnosis', 'diagnosis_result', 'diagnosis_error']
