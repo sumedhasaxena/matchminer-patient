@@ -546,7 +546,7 @@
               <!-- Error message -->
               <div class="flash error">
                   <span class="error-message">{{ message }}</span>
-                  <button type="button" class="close-error" onclick="closeErrorMessage()" title="Close error message">×</button>
+                  <button type="button" class="close-error" onclick="resetForm()" title="Close error message and reset form">×</button>
               </div>
             {% endif %}
           {% endif %}
@@ -1027,6 +1027,21 @@
                 // Hide patient ID flash banner
                 const flashBanner = document.querySelector('.flash');
                 if (flashBanner) flashBanner.style.display = 'none';
+                
+                // Clear session and reload page for fresh start
+                fetch('/clear_session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                }).then(() => {
+                    // Reload the page without query parameters for a clean reset
+                    window.location.href = window.location.pathname;
+                }).catch(error => {
+                    console.error('Error clearing session:', error);
+                    // Fallback: reload the page without query parameters
+                    window.location.href = window.location.pathname;
+                });
             }
 
             function toggleAdvancedDiagnosis() {
@@ -1143,30 +1158,6 @@
                 }
                 animateEllipsis('.ellipsis');
             });
-
-            // Close error message and clear session for fresh start
-            function closeErrorMessage() {
-                // Hide the error message
-                const flashBanner = document.querySelector('.flash.error');
-                if (flashBanner) {
-                    flashBanner.style.display = 'none';
-                }
-                
-                // Clear session and reload page for fresh start
-                fetch('/clear_session', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                }).then(() => {
-                    // Reload the page to get a fresh start
-                    window.location.reload();
-                }).catch(error => {
-                    console.error('Error clearing session:', error);
-                    // Fallback: just reload the page
-                    window.location.reload();
-                });
-            }
         </script>
     </div>
 </body>
