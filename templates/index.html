@@ -71,6 +71,12 @@
             text-align: center;
             max-width: 800px;
         }
+        .flash.error {
+            color: #c53030;
+            background-color: #fff5f5;
+            border: 1px solid #feb2b2;
+            position: relative;
+        }
         .flash .patient-id {
             font-size: 1.2em;
             font-weight: 600;
@@ -81,6 +87,33 @@
             font-size: 0.9em;
             color: #4a5568;
             display: block;
+        }
+        .flash .error-message {
+            font-size: 1.1em;
+            font-weight: 500;
+            display: block;
+        }
+        .flash.error .close-error {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            font-weight: bold;
+            color: #c53030;
+            cursor: pointer;
+            padding: 0;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+        .flash.error .close-error:hover {
+            background-color: #fed7d7;
         }
         h2 { 
             text-align: center; 
@@ -502,10 +535,20 @@
         <h2>Patient Data</h2>
         {% with messages = get_flashed_messages() %}
           {% if messages %}
-            <div class="flash">
-                <span class="patient-id">{{ messages[0].split('\n')[0] }}</span>
-                <span class="reference-note">{{ messages[0].split('\n')[1] }}</span>
-            </div>
+            {% set message = messages[0] %}
+            {% if '\n' in message %}
+              <!-- Success message with patient ID and reference note -->
+              <div class="flash">
+                  <span class="patient-id">{{ message.split('\n')[0] }}</span>
+                  <span class="reference-note">{{ message.split('\n')[1] }}</span>
+              </div>
+            {% else %}
+              <!-- Error message -->
+              <div class="flash error">
+                  <span class="error-message">{{ message }}</span>
+                  <button type="button" class="close-error" onclick="closeErrorMessage()" title="Close error message">×</button>
+              </div>
+            {% endif %}
           {% endif %}
         {% endwith %}
         <form method="post" enctype="multipart/form-data">
@@ -1100,6 +1143,30 @@
                 }
                 animateEllipsis('.ellipsis');
             });
+
+            // Close error message and clear session for fresh start
+            function closeErrorMessage() {
+                // Hide the error message
+                const flashBanner = document.querySelector('.flash.error');
+                if (flashBanner) {
+                    flashBanner.style.display = 'none';
+                }
+                
+                // Clear session and reload page for fresh start
+                fetch('/clear_session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                }).then(() => {
+                    // Reload the page to get a fresh start
+                    window.location.reload();
+                }).catch(error => {
+                    console.error('Error clearing session:', error);
+                    // Fallback: just reload the page
+                    window.location.reload();
+                });
+            }
         </script>
     </div>
 </body>
