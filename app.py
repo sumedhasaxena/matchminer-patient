@@ -1,89 +1,351 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+"""
+MatchMiner Patient Data Processing Application
+
+This Flask application handles patient data capture, review, and processing
+for the MatchMiner system. It processes clinical and genomic data and converts
+them to MatchMiner-compliant JSON formats.
+"""
+
+# Standard library imports
+import time
 import os
-from werkzeug.utils import secure_filename
-from datetime import datetime
 import json
+import threading
+import subprocess
+from datetime import datetime
+from typing import Dict, List, Tuple, Optional, Any
+
+# Third-party imports
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from werkzeug.utils import secure_filename
+from urllib.parse import unquote
+from loguru import logger
+
+# Local imports
 from utils.oncotree import get_l1_l2_l3_oncotree_data
 from utils.diagnosis_rules import DIAGNOSIS_DROPDOWN_RULES
-from urllib.parse import unquote
 from patient_data.patient_clinical_data_config import patient_clinical_schema_keys
 from patient_data.get_patient_clinical_data import get_oncotree_diagnosis, get_additional_info
-import subprocess
-from loguru import logger
-import threading
 
+# Configuration
+class Config:
+    """Application configuration constants"""
+    SECRET_KEY = 'your_secret_key'
+    HOST = '0.0.0.0'
+    PORT = 8890
+    DEBUG = True
+    
+    # Directory paths
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    IMAGE_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'images')
+    TEXT_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'clinical_data')
+    CLINICAL_JSON = os.path.join(BASE_DIR, 'patient_data', 'clinical_json')
+    GENOMIC_JSON = os.path.join(BASE_DIR, 'patient_data', 'genomic_json')
+    EXTRACTED_TEXT = os.path.join(BASE_DIR, 'patient_data', 'extracted_text')
+    LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+    
+    # Script paths
+    CLINICAL_SCRIPT = os.path.join(BASE_DIR, 'patient_data', 'get_patient_clinical_data.py')
+    GENOMIC_SCRIPT = os.path.join(BASE_DIR, 'patient_data', 'get_patient_genomic_data.py')
+    
+    # Log files
+    CLINICAL_LOG = os.path.join(LOGS_DIR, 'get_patient_clinical_data.log')
+    GENOMIC_LOG = os.path.join(LOGS_DIR, 'get_patient_genomic_data.log')
+    APP_LOG = os.path.join(LOGS_DIR, 'app.log')
+    
+    # Sequence file
+    SEQUENCE_FILE = os.path.join(TEXT_FOLDER, '.sequence_counter.json')
 
+# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Needed for flash messages
+app.secret_key = Config.SECRET_KEY
 
-# folders that contain uploaded data
-IMAGE_FOLDER = r'./patient_data/images'
-TEXT_FOLDER = r'./patient_data/clinical_data'
+# Create necessary directories
+for directory in [Config.IMAGE_FOLDER, Config.TEXT_FOLDER, Config.CLINICAL_JSON, 
+                  Config.GENOMIC_JSON, Config.EXTRACTED_TEXT, Config.LOGS_DIR]:
+    os.makedirs(directory, exist_ok=True)
 
-#folders that contain processed data
-CLINICAL_JSON = r'./patient_data/clinical_json'
-GENOMIC_JSON = r'./patient_data/genomic_json'
-EXTRACTED_TEXT = r'./patient_data/extracted_text'
-
-SEQUENCE_FILE = os.path.join(TEXT_FOLDER, '.sequence_counter.json')
-
-os.makedirs(IMAGE_FOLDER, exist_ok=True)
-os.makedirs(TEXT_FOLDER, exist_ok=True)
-os.makedirs(CLINICAL_JSON, exist_ok=True)
-os.makedirs(GENOMIC_JSON, exist_ok=True)
-os.makedirs(EXTRACTED_TEXT, exist_ok=True)
+# Set up logging
+logger.add(Config.APP_LOG, rotation="10 MB", retention="10 days", enqueue=True)
 
 # Load OncoTree data at startup
 level1_list, level1_to_level2, level2_to_level3 = get_l1_l2_l3_oncotree_data()
-# Convert sets to sorted lists for consistent ordering
 level1_list = sorted(list(level1_list))
 level1_to_level2 = {k: sorted(list(v)) for k, v in level1_to_level2.items()}
 level2_to_level3 = {k: sorted(list(v)) for k, v in level2_to_level3.items()}
 
+class SequenceManager:
+    """Manages unique ID generation and sequence counting"""
+    
+    @staticmethod
+    def load_sequence_counter() -> Dict[str, int]:
+        """Load the sequence counter from file"""
+        if os.path.exists(Config.SEQUENCE_FILE):
+            try:
+                    with open(Config.SEQUENCE_FILE, 'r') as f:
+                        return json.load(f)
+            except json.JSONDecodeError:
+                    logger.warning("Invalid sequence counter file, starting fresh")
+                    return {}
+        return {}
 
+    @staticmethod
+    def save_sequence_counter(counter: Dict[str, int]) -> None:
+        """Save the sequence counter to file"""
+        with open(Config.SEQUENCE_FILE, 'w') as f:
+            json.dump(counter, f)
 
-# Set up Loguru to log to a file (e.g., logs/app.log)
-logger.add("logs/app.log", rotation="10 MB", retention="10 days", enqueue=True)
+    @staticmethod
+    def generate_unique_id() -> str:
+        """Generate a unique ID in format YYMMDD-XXXX"""
+        today = datetime.now()
+        date_prefix = today.strftime('%y%m%d')
+        
+        counter = SequenceManager.load_sequence_counter()
+        counter = {k: v for k, v in counter.items() if k == date_prefix}
+        
+        next_seq = counter.get(date_prefix, 0) + 1
+        counter[date_prefix] = next_seq
+        SequenceManager.save_sequence_counter(counter)
+        
+        return f"{date_prefix}-{next_seq:04d}"
 
-def load_sequence_counter():
-    """Load the sequence counter from file"""
-    if os.path.exists(SEQUENCE_FILE):
+class BackgroundProcessor:
+    """Handles background script execution"""
+    
+    @staticmethod
+    def run_script_in_background(script_path: str, args: List[str], log_file: str, 
+                                start_msg: str, finish_msg: str, type: str) -> None:
+        """Run a script in the background with logging"""
+        def runner():
+            logger.info(start_msg)
+            try:
+                with open(log_file, 'a') as log_handle:
+                    process = subprocess.Popen(
+                        ['python', script_path] + args,
+                        stdout=log_handle,
+                        stderr=subprocess.STDOUT
+                    )
+                    process.wait()
+                logger.info(finish_msg)
+            except Exception as e:
+                logger.error(f"Background script failed: {str(e)}")
+        
+        threading.Thread(target=runner, daemon=True).start()
+
+    @staticmethod
+    def start_data_processing(unique_id: str, data_file: str) -> None:
+        """Start both clinical and genomic data processing in background"""
+        processing_configs = [
+            {
+                'script_path': Config.CLINICAL_SCRIPT,
+                'args': [data_file],
+                'log_file': Config.CLINICAL_LOG,
+                'start_msg': f"Starting clinical data conversion for {unique_id}",
+                'finish_msg': f"Completed clinical data conversion for {unique_id}",
+                'type': 'clinical'
+            },
+            {
+                'script_path': Config.GENOMIC_SCRIPT,
+                'args': [data_file],
+                'log_file': Config.GENOMIC_LOG,
+                'start_msg': f"Starting genomic data conversion for {unique_id}",
+                'finish_msg': f"Completed genomic data conversion for {unique_id}",
+                'type': 'genomic'
+            }
+        ]
+        
+        for config in processing_configs:
+            try:
+                BackgroundProcessor.run_script_in_background(**config)
+                logger.info(f"Started background {config['type']} data processing for {unique_id}")
+            except Exception as e:
+                logger.error(f"Failed to start {config['type']} data processing for {unique_id}: {str(e)}")
+
+class DataProcessor:
+    """Handles data processing and file operations"""
+    
+    @staticmethod
+    def save_extracted_text(unique_id: str, text_content: str) -> None:
+        """Save extracted text to file"""
+        file_path = os.path.join(Config.EXTRACTED_TEXT, f"{unique_id}.txt")
         try:
-            with open(SEQUENCE_FILE, 'r') as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-    return {}
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(text_content)
+            logger.info(f"Successfully saved extracted text for {unique_id}")
+        except IOError as e:
+            logger.error(f"Failed to save extracted text for {unique_id}: {str(e)}")
+            raise
 
-def save_sequence_counter(counter):
-    """Save the sequence counter to file"""
-    with open(SEQUENCE_FILE, 'w') as f:
-        json.dump(counter, f)
+    @staticmethod
+    def save_clinical_data(unique_id: str, form_data: Dict[str, Any], 
+                          diagnosis_value: str, dynamic_dropdowns: List[Dict[str, Any]]) -> str:
+        """Save clinical data to text file and return the filename"""
+        data_file = f"{unique_id}.txt"
+        file_path = os.path.join(Config.TEXT_FOLDER, data_file)
+        
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                # Write basic patient information
+                f.write(f"{patient_clinical_schema_keys['sample_id_key']}: {unique_id}\n")
+                f.write(f"{patient_clinical_schema_keys['mrn_key']}: {unique_id}\n")
+                f.write(f"{patient_clinical_schema_keys['gender_key']}: {form_data.get('gender', '')}\n")
+                f.write(f"{patient_clinical_schema_keys.get('age_key', 'AGE')}: {form_data.get('age', '')}\n")
+                f.write(f"{patient_clinical_schema_keys.get('oncotree_diag_key', 'DIAGNOSIS')}: {diagnosis_value}\n")
+                f.write(f"{patient_clinical_schema_keys.get('oncotree_diag_name_key', 'DIAGNOSIS_NAME')}: {diagnosis_value}\n")
+                f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
+                
+                # Write TMB if present
+                tmb = session.get(patient_clinical_schema_keys['tmb_key'])
+                if tmb is not None:
+                    f.write(f"TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE: {tmb}\n")
+                
+                # Write dynamic dropdowns
+                for dd in dynamic_dropdowns:
+                    f.write(f"{dd['name']}: {dd['selected']}\n")
+                f.write("---\n")
+            
+            logger.info(f"Successfully saved clinical data for {unique_id}")
+            return data_file
+        except IOError as e:
+            logger.error(f"Failed to save clinical data for {unique_id}: {str(e)}")
+            raise
 
-def generate_unique_id():
-    """Generate a unique ID in format YYMMDD-XXXX"""
-    today = datetime.now()
-    date_prefix = today.strftime('%y%m%d')
-    
-    # Load current sequence counter
-    counter = load_sequence_counter()
-    
-    # Clean up old dates (keep only today's counter)
-    counter = {k: v for k, v in counter.items() if k == date_prefix}
-    
-    # Get or initialize sequence for today
-    if date_prefix in counter:
-        next_seq = counter[date_prefix] + 1
-    else:
-        next_seq = 1
-    
-    # Update and save the counter
-    counter[date_prefix] = next_seq
-    save_sequence_counter(counter)
-    
-    # Format with leading zeros
-    return f"{date_prefix}-{next_seq:04d}"
+    @staticmethod
+    def process_uploaded_images(unique_id: str, image_files) -> Tuple[List[str], Optional[str]]:
+        """Process uploaded images: save files and run OCR extraction"""
+        image_filenames = []
+        image_paths = []
+        
+        # Save uploaded files
+        for index, image_file in enumerate(image_files, 1):
+            if image_file and image_file.filename:
+                ext = os.path.splitext(secure_filename(image_file.filename))[1]
+                image_filename = f"{unique_id}-{index:02d}{ext}"
+                image_path = os.path.join(Config.IMAGE_FOLDER, image_filename)
+                image_file.save(image_path)
+                image_filenames.append(image_filename)
+                image_paths.append(image_path)
 
+        # Run OCR text extraction
+        if image_paths:
+            try:
+                # Run OCR extraction using the existing surya_ocr_text_extract.py script
+                result = subprocess.run(
+                    ['python', 'patient_data/surya_ocr_text_extract.py'] + image_paths + [unique_id],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                
+                # Log stderr if there's any output
+                if result.stderr:
+                    logger.warning(f"OCR script stderr for {unique_id}: {result.stderr}")
+                
+                # Read extracted text from the file created by the OCR script
+                extracted_text_file = os.path.join(Config.EXTRACTED_TEXT, f"{unique_id}.txt")
+                if os.path.exists(extracted_text_file):
+                    with open(extracted_text_file, 'r', encoding='utf-8') as f:
+                        extracted_text = f.read()
+                    logger.info(f"OCR extraction completed for {unique_id}")
+                    return image_filenames, extracted_text
+            except subprocess.CalledProcessError as e:
+                    logger.error(f"OCR processing failed for {unique_id}: {e.stderr}")
+                    return image_filenames, None
+            except Exception as e:
+                logger.error(f"OCR processing failed for {unique_id}: {str(e)}")
+                return image_filenames, None
+        else:
+                logger.warning(f"Extracted text file not found for {unique_id}")
+                return image_filenames, None
+            
+        return image_filenames, None
+
+class DiagnosisProcessor:
+    """Handles diagnosis processing and validation"""
+    
+    @staticmethod
+    def get_diagnosis_result(unique_id: str, diagnosis_free_text: Optional[str] = None,
+                           diagnosis_level1: Optional[str] = None,
+                           diagnosis_level2: Optional[str] = None,
+                           diagnosis_level3: Optional[str] = None) -> Tuple[Optional[Dict], Optional[str]]:
+        """
+        Get diagnosis result either from free text lookup or dropdown selections.
+        
+        Args:
+            unique_id (str): The unique patient ID
+            diagnosis_free_text (str, optional): Free text diagnosis input
+            diagnosis_level1 (str, optional): Level 1 diagnosis from dropdown
+            diagnosis_level2 (str, optional): Level 2 diagnosis from dropdown
+            diagnosis_level3 (str, optional): Level 3 diagnosis from dropdown
+        
+        Returns:
+            tuple: (diagnosis_result, error_message)
+                - diagnosis_result: dict with level1, level2, level3 keys or None
+                - error_message: str error message if any, None otherwise
+        """
+        try:
+            if diagnosis_free_text:
+                try:
+                    diagnosis_result = get_oncotree_diagnosis(unique_id, diagnosis_free_text)
+                    logger.info(f"Diagnosis lookup completed for {unique_id}: {diagnosis_result}")
+                    
+                    if diagnosis_result is None:
+                        return None, f"Error: Could not find a matching diagnosis for '{diagnosis_free_text}'"
+                    
+                    return diagnosis_result, None
+                except KeyError as ke:
+                    logger.error(f"AI response missing required key for {unique_id}: {str(ke)}")
+                    return None, f"Error: AI diagnosis lookup failed - missing required data. Please try again or use manual diagnosis selection."
+                except Exception as ai_error:
+                    # Check if it's a connection error from the AI service
+                    error_str = str(ai_error)
+                    if "connection_error" in error_str or "Connection error" in error_str:
+                        logger.error(f"AI service connection error for {unique_id}: {error_str}")
+                        return None, f"Error: Unable to connect to AI diagnosis service. Please try again later or use manual diagnosis selection."
+                    else:
+                        logger.error(f"AI diagnosis lookup failed for {unique_id}: {error_str}")
+                        return None, f"Error: AI diagnosis lookup failed. Please try again or use manual diagnosis selection."
+            else:
+                if not diagnosis_level1:
+                    return None, "Error: Level 1 diagnosis is required"
+                
+                if not diagnosis_level2:
+                    return None, "Error: Level 2 diagnosis is required"
+                
+                diagnosis_result = {
+                    'level1': diagnosis_level1,
+                    'level2': diagnosis_level2,
+                    'level3': diagnosis_level3
+                }
+                return diagnosis_result, None
+                
+        except Exception as e:
+            logger.error(f"Error in diagnosis processing for {unique_id}: {str(e)}")
+            return None, f"Error processing diagnosis: {str(e)}"
+
+    @staticmethod
+    def build_dynamic_dropdowns() -> List[Dict[str, Any]]:
+        """Build dynamic dropdowns from session data"""
+        dynamic_dropdowns = []
+        value_to_key = {v: k for k, v in patient_clinical_schema_keys.items()}
+
+        for session_key in session.keys():
+            if session_key in value_to_key:
+                dropdown_key = value_to_key[session_key]
+                for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
+                    for dropdown in rule['dropdowns']:
+                        if dropdown['name'] == dropdown_key:
+                            logger.info(f"Found dropdown match: {session_key} -> {dropdown_key}")
+                            dynamic_dropdowns.append({
+                                'name': session_key,
+                                'label': dropdown['label'],
+                                'options': dropdown['values'],
+                                'selected': session[session_key]
+                            })
+        return dynamic_dropdowns
+
+# Route handlers
 @app.route('/debug/oncotree')
 def debug_oncotree():
     """Debug endpoint to check OncoTree data"""
@@ -94,157 +356,57 @@ def debug_oncotree():
     })
 
 @app.route('/get_level2/<path:level1>')
-def get_level2(level1):
+def get_level2(level1: str):
     """API endpoint to get level2 values for a given level1"""
-    # Decode the URL-encoded level1 value
     level1 = unquote(level1)
-    print(f"Received request for level1: {level1}")  # Debug print
+    logger.debug(f"Received request for level1: {level1}")
     return jsonify(level1_to_level2.get(level1, []))
 
 @app.route('/get_level3/<path:level2>')
-def get_level3(level2):
+def get_level3(level2: str):
     """API endpoint to get level3 values for a given level2"""
-    # Decode the URL-encoded level2 value
     level2 = unquote(level2)
-    print(f"Received request for level2: {level2}")  # Debug print
+    logger.debug(f"Received request for level2: {level2}")
     return jsonify(level2_to_level3.get(level2, []))
 
 @app.route('/get_additional_diagnosis_dropdowns/<path:diagnosis>')
-def get_additional_diagnosis_dropdowns(diagnosis):
+def get_additional_diagnosis_dropdowns(diagnosis: str):
     """API endpoint to get dropdown options for a specific diagnosis"""
     diagnosis = unquote(diagnosis)
-    print(f"Received request for diagnosis: {diagnosis}")  # Debug print
+    logger.debug(f"Received request for diagnosis: {diagnosis}")
     
-    # Get level1 and level2 from the diagnosis string
     parts = diagnosis.split(' > ')
     level1 = parts[0] if len(parts) > 0 else ''
     level2 = parts[1] if len(parts) > 1 else ''
     
-    # Collect dropdowns from both level1 and level2 rules
     dropdowns = []
     
-    # Check level1 rules
     if level1 in DIAGNOSIS_DROPDOWN_RULES:
         dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level1]['dropdowns'])
     
-    # Check level2 rules
     if level2 in DIAGNOSIS_DROPDOWN_RULES:
         dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level2]['dropdowns'])
     
     return jsonify(dropdowns)
 
-def get_diagnosis_result(unique_id, diagnosis_free_text=None, diagnosis_level1=None, diagnosis_level2=None, diagnosis_level3=None):
-    """
-    Get diagnosis result either from free text lookup or dropdown selections.
-    
-    Args:
-        unique_id (str): The unique patient ID
-        diagnosis_free_text (str, optional): Free text diagnosis input
-        diagnosis_level1 (str, optional): Level 1 diagnosis from dropdown
-        diagnosis_level2 (str, optional): Level 2 diagnosis from dropdown
-        diagnosis_level3 (str, optional): Level 3 diagnosis from dropdown
-    
-    Returns:
-        tuple: (diagnosis_result, error_message)
-            - diagnosis_result: dict with level1, level2, level3 keys or None
-            - error_message: str error message if any, None otherwise
-    """
-    try:
-        if diagnosis_free_text:
-            # If free text diagnosis was entered, use get_oncotree_diagnosis
-            diagnosis_result = get_oncotree_diagnosis(unique_id, diagnosis_free_text)
-            logger.info(f"Diagnosis lookup completed for {unique_id}: {diagnosis_result}")
-            
-            if diagnosis_result is None:
-                return None, f"Error: Could not find a matching diagnosis for '{diagnosis_free_text}'"
-            
-            return diagnosis_result, None
-            
-        else:
-            # If no free text diagnosis, use dropdown selections
-            if not diagnosis_level1:
-                return None, "Error: Level 1 diagnosis is required"
-                
-            # Create diagnosis_result in same format as get_oncotree_diagnosis
-            diagnosis_result = {
-                'level1': diagnosis_level1,
-                'level2': diagnosis_level2 if diagnosis_level2 else None,
-                'level3': diagnosis_level3 if diagnosis_level3 else None
-            }
-            return diagnosis_result, None
-            
-    except Exception as e:
-        logger.error(f"Error in diagnosis processing for {unique_id}: {str(e)}")
-        return None, f"Error processing diagnosis: {str(e)}"
-
-def process_uploaded_images(unique_id, image_files):
-    """
-    Process uploaded images: save files and run OCR extraction.
-    
-    Args:
-        unique_id (str): The unique patient ID
-        image_files: List of uploaded image files from request.files
-    
-    Returns:
-        tuple: (image_filenames, extracted_text)
-            - image_filenames: list of saved image filenames
-            - extracted_text: extracted text from OCR or None if error
-    """
-    image_filenames = []
-    image_paths = []
-    
-    # Save uploaded files
-    for index, image_file in enumerate(image_files, 1):
-        if image_file and image_file.filename:
-            ext = os.path.splitext(secure_filename(image_file.filename))[1]
-            image_filename = f"{unique_id}-{index:02d}{ext}"
-            image_path = os.path.abspath(os.path.join(IMAGE_FOLDER, image_filename))
-            image_file.save(image_path)
-            image_filenames.append(image_filename)
-            image_paths.append(image_path)
-
-    # Run OCR text extraction for all files at once
-    extracted_text = None
-    if image_paths:
-        try:
-            logger.info("Begin simulation of OCR extraction...")
-            # Run surya_ocr_text_extract.py with all image paths
-            result = subprocess.run(
-                ['python', 'patient_data/surya_ocr_text_extract.py'] + image_paths + [unique_id],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            logger.info(f"Successfully ran OCR extraction for {len(image_paths)} files")
-            
-            # Read the extracted text file created by the script
-            extracted_text_file = os.path.join(EXTRACTED_TEXT, f"{unique_id}.txt")
-            if os.path.exists(extracted_text_file):
-                with open(extracted_text_file, 'r', encoding='utf-8') as f:
-                    extracted_text = f.read()
-                logger.info(f"Loaded extracted text from {extracted_text_file}")
-            else:
-                logger.warning(f"Extracted text file not found: {extracted_text_file}")
-                
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error running OCR extraction: {str(e)}")
-            logger.error(f"Error output: {e.stderr}")
-        except Exception as e:
-            logger.error(f"Unexpected error during OCR extraction: {str(e)}")
-
-    return image_filenames, extracted_text
-
 @app.route('/back_to_index')
 def back_to_index():
-    # Redirect to index, which will pre-populate from session
-    return redirect(url_for('index', from_review=1))
+    """Redirect back to index page"""
+    return redirect(url_for('index'))
+
+@app.route('/clear_session', methods=['POST'])
+def clear_session():
+    """Clear session data and return fresh index page"""
+    session.clear()
+    return jsonify({'status': 'success'})
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    """Main form submission and display endpoint"""
     if request.method == 'POST':
         try:
-            # Generate unique ID first
-            unique_id = generate_unique_id() 
+            # Generate unique ID
+            unique_id = SequenceManager.generate_unique_id()
             logger.info(f"Generated unique ID for new submission: {unique_id}")
             
             # Get form data
@@ -255,10 +417,10 @@ def index():
             report_date = form_data.get('report_date', '')
             description = form_data.get('description', '')
 
-            # Use OCR to extract text from images
+            # Process uploaded images
             image_files = request.files.getlist('genomic_images')
             try:
-                image_filenames, extracted_text = process_uploaded_images(unique_id, image_files)
+                image_filenames, extracted_text = DataProcessor.process_uploaded_images(unique_id, image_files)
                 logger.info(f"Processed {len(image_filenames)} images for {unique_id}")
             except Exception as e:
                 logger.exception(f"Error processing images for {unique_id}: {str(e)}")
@@ -273,47 +435,34 @@ def index():
             if diagnosis_free_text:
                 session['free_text_diagnosis'] = diagnosis_free_text
                 logger.info(f"Processing free text diagnosis for {unique_id}: {diagnosis_free_text}")
-                
-                try:
-                    # Get oncotree diagnosis match using AI
-                    diagnosis_result, error = get_diagnosis_result(
-                        unique_id=unique_id,
-                        diagnosis_free_text=diagnosis_free_text
-                    )
 
-                    # Check for AI service errors
-                    if isinstance(diagnosis_result, dict) and 'error' in diagnosis_result:
-                        logger.error(f"AI service error for {unique_id}: {diagnosis_result['message']}")
-                        flash(diagnosis_result['message'])
-                        return redirect(url_for('index'))
-
-                    # Extract additional clinical/genomic info from AI   
-                    try:
-                        additional_info_dict = get_additional_info(unique_id, description)
-                        logger.info(f"Retrieved additional info for {unique_id}")
-                    except Exception as e:
-                        logger.exception(f"Error getting additional info for {unique_id}: {str(e)}")
-                        raise
-                    
-                    # Check for AI service errors in additional info
-                    if isinstance(additional_info_dict, dict) and 'error' in additional_info_dict:
-                        logger.error(f"AI service error in additional info for {unique_id}: {additional_info_dict['message']}")
-                        flash(additional_info_dict['message'])
-                        return redirect(url_for('index'))
-
-                    # Extract and store individual values from additional info
-                    for key, schema_key in patient_clinical_schema_keys.items():
-                        if schema_key in additional_info_dict:
-                            session[schema_key] = additional_info_dict[schema_key]
-                            logger.info(f"Stored {schema_key} in session for {unique_id}: {additional_info_dict[schema_key]}")
-                
-                except Exception as e:
-                    logger.exception(f"Error processing diagnosis for {unique_id}: {str(e)}")
-                    raise
+                diagnosis_result, diagnosis_error = DiagnosisProcessor.get_diagnosis_result(
+                    unique_id, diagnosis_free_text)
             
-            else: # When diagnosis was selected using dropdowns
+                if diagnosis_error:
+                    session['diagnosis_error'] = diagnosis_error
+                    flash(diagnosis_error)
+                    return redirect(url_for('index'))
+                
+                # Extract additional clinical/genomic info from AI   
+                additional_info_dict = get_additional_info(unique_id, description)
+                logger.info(f"Retrieved additional info for {unique_id}")
+
+                 # Check for connection errors in the AI response
+                if isinstance(additional_info_dict, dict) and 'error' in additional_info_dict:
+                    logger.error(f"MMID: {unique_id} | AI service error in additional info: {additional_info_dict.get('message', 'Unknown error')}")
+                    flash(additional_info_dict['message'])
+                    return redirect(url_for('index'))
+                
+                # Extract and store individual values from additional info
+                for key, schema_key in patient_clinical_schema_keys.items():
+                    if schema_key in additional_info_dict:
+                        session[schema_key] = additional_info_dict[schema_key]
+                        logger.info(f"Stored {schema_key} in session for {unique_id}: {additional_info_dict[schema_key]}")           
+            
+            else:# When diagnosis was selected using dropdowns
                 try:
-                    diagnosis_result, error = get_diagnosis_result(
+                    diagnosis_result, diagnosis_error = DiagnosisProcessor.get_diagnosis_result(
                         unique_id=unique_id,
                         diagnosis_level1=form_data.get('diagnosis_level1', ''),
                         diagnosis_level2=form_data.get('diagnosis_level2', ''),
@@ -321,8 +470,13 @@ def index():
                     )
                     logger.info(f"Processed dropdown diagnosis for {unique_id}")
 
+                    if diagnosis_error:
+                        session['diagnosis_error'] = diagnosis_error
+                        flash(diagnosis_error)
+                        return redirect(url_for('index'))
+
                     # Handle dynamic diagnosis dropdowns only when using dropdown selection
-                    if diagnosis_result and not error:
+                    if diagnosis_result:
                         # Get the appropriate diagnosis level for dropdown rules
                         diagnosis_for_rules = diagnosis_result.get('level2') or diagnosis_result.get('level1')
                         
@@ -348,12 +502,7 @@ def index():
                     logger.exception(f"Error processing dropdown diagnosis for {unique_id}: {str(e)}")
                     raise
 
-            if error:
-                logger.error(f"Validation error for {unique_id}: {error}")
-                flash(error)
-                return redirect(url_for('index'))
-
-            # Store all form data in session for review page
+            # Store form data in session
             session['form_data'] = {
                 'unique_id': unique_id,
                 'gender': gender,
@@ -365,7 +514,6 @@ def index():
             session['diagnosis_result'] = diagnosis_result
             logger.info(f"Stored form data and diagnosis result in session for {unique_id}")
 
-            # Log all session values after processing
             logger.info('Session values after form submission:')
             for key, value in session.items():
                 logger.info(f'{key}: {value}')
@@ -374,17 +522,17 @@ def index():
 
         except Exception as e:
             logger.exception(f"Error in index POST for ID {form_data.get('unique_id', 'unknown')}: {str(e)}")
-            logger.error(f"Exception type: {type(e).__name__}")
-            logger.error(f"Exception args: {e.args}")
             flash(f"An error occurred while processing your request: {str(e)}")
             return redirect(url_for('index'))
 
-    # If this is a direct GET (not from review/back), clear the session
-    # You can use a query param or referrer check if you want to preserve session for "back" navigation
+    # Handle GET request
     if request.method == 'GET' and not request.args.get('from_review'):
-        session.clear()
+        # Don't clear session if there are diagnosis errors to preserve flash messages
+        diagnosis_error = session.get('diagnosis_error')
+        if not diagnosis_error:
+            session.clear()
 
-    # For GET, pre-populate from session if available
+    # Pre-populate from session
     form_data = session.get('form_data', {})
     diagnosis_result = session.get('diagnosis_result', {})
     free_text_diagnosis = session.get('free_text_diagnosis', '')
@@ -397,54 +545,30 @@ def index():
         free_text_diagnosis=free_text_diagnosis,
         extracted_text=extracted_text,
         level1_list=level1_list,
-        # ... any other context ...
     )
-
-def run_script_in_background(script_path, args, log_file, start_msg, finish_msg):
-    def runner():
-        logger.info(start_msg)
-        process = subprocess.Popen(
-            ['python', script_path] + args,
-            stdout=open(log_file, 'a'),
-            stderr=subprocess.STDOUT
-        )
-        process.wait()
-        logger.info(finish_msg)
-    threading.Thread(target=runner, daemon=True).start()
 
 @app.route('/review', methods=['GET'])
 def review():
+    """Review page endpoint"""
     form_data = session.get('form_data')
     free_text_diagnosis = session.get('free_text_diagnosis')
     diagnosis_result = session.get('diagnosis_result')
     diagnosis_error = session.get('diagnosis_error')
 
-    dynamic_dropdowns = []
-    # Reverse the mapping for value->key
-    value_to_key = {v: k for k, v in patient_clinical_schema_keys.items()}
+    if not form_data:
+        logger.error("No form data found in session during review")
+        return redirect(url_for('index'))
 
-    for session_key in session.keys():
-        if session_key in value_to_key:
-            dropdown_key = value_to_key[session_key]            
-            # Search all diagnoses and their dropdowns for a match
-            for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
-                for dropdown in rule['dropdowns']:
-                    if dropdown['name'] == dropdown_key:
-                        logger.info(f"Found dropdown match: {session_key} -> {dropdown_key}")
-                        dynamic_dropdowns.append({
-                            'name': session_key,
-                            'label': dropdown['label'],
-                            'options': dropdown['values'],
-                            'selected': session[session_key]
-                        })
-
-    # Prepare level2 and level3 lists for dropdowns
+    # Build dynamic dropdowns
+    dynamic_dropdowns = DiagnosisProcessor.build_dynamic_dropdowns()
+    
+    # Prepare level2 and level3 lists
     selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
     selected_level2 = diagnosis_result.get('level2') if diagnosis_result else None
     level2_list = level1_to_level2.get(selected_level1, []) if selected_level1 else []
     level3_list = level2_to_level3.get(selected_level2, []) if selected_level2 else []
    
-    # Store dynamic_dropdowns in session for use in confirmation and text file
+    # Store dynamic_dropdowns in session
     session['dynamic_dropdowns'] = dynamic_dropdowns
 
     return render_template(
@@ -461,47 +585,39 @@ def review():
 
 @app.route('/submit_review', methods=['POST'])
 def submit_review():
+    """Submit review and start background processing"""
     try:
-        # Get the selected diagnosis levels
+        # Get form data
         diagnosis_level1 = request.form.get('diagnosis_level1')
         diagnosis_level2 = request.form.get('diagnosis_level2')
         diagnosis_level3 = request.form.get('diagnosis_level3')
         
-        # Get the stored form data
         form_data = session.get('form_data')
         if not form_data:
             logger.error("No form data found in session during submit_review")
             return redirect(url_for('index'))
         
         # Update form data with selected diagnosis
-        form_data['diagnosis_level1'] = diagnosis_level1
-        form_data['diagnosis_level2'] = diagnosis_level2
-        form_data['diagnosis_level3'] = diagnosis_level3
+        form_data.update({
+            'diagnosis_level1': diagnosis_level1,
+            'diagnosis_level2': diagnosis_level2,
+            'diagnosis_level3': diagnosis_level3
+        })
         
-        # Get the unique ID
         unique_id = form_data.get('unique_id')
         logger.info(f"Processing review submission for ID: {unique_id}")
         
-        # Get the updated OCR-extracted text from the form, in case user manually updated the text
+        # Update extracted text
         updated_extracted_text = request.form.get('extracted_text', '')
-        
-        # Update session with the new extracted text
         session['extracted_text'] = updated_extracted_text
         
-        # Save the updated extracted text to the EXTRACTED_TEXT folder
-        extracted_text_file = os.path.join(EXTRACTED_TEXT, f"{unique_id}.txt")
-        try:
-            with open(extracted_text_file, 'w', encoding='utf-8') as f:
-                f.write(updated_extracted_text)
-            logger.info(f"Successfully updated extracted text file for {unique_id}")
-        except IOError as e:
-            logger.error(f"Failed to write extracted text file for {unique_id}: {str(e)}")
-            raise
+        # Save extracted text
+        DataProcessor.save_extracted_text(unique_id, updated_extracted_text)
         
-        # Determine the lowest level diagnosis
+        # Determine diagnosis value
         diagnosis_value = diagnosis_level3 or diagnosis_level2
         
-        # Retrieve dynamic_dropdowns from session (as built for the review page)
+        # Process dynamic dropdowns
         session_dynamic_dropdowns = session.get('dynamic_dropdowns', [])
         if not session_dynamic_dropdowns:
             logger.warning(f"No dynamic dropdowns found in session for {unique_id}")
@@ -517,80 +633,21 @@ def submit_review():
                 'selected': selected_value
             })
 
-        # Save data to a text file named after unique_id in TEXT_FOLDER
-        data_file = f"{unique_id}.txt"
-        data_file_path = os.path.abspath(os.path.join(TEXT_FOLDER, data_file))
-        try:
-            with open(data_file_path, 'w', encoding='utf-8') as f:
-                f.write(f"{patient_clinical_schema_keys['sample_id_key']}: {unique_id}\n")
-                f.write(f"{patient_clinical_schema_keys['mrn_key']}: {unique_id}\n")
-                f.write(f"{patient_clinical_schema_keys['gender_key']}: {form_data.get('gender', '')}\n")
-                f.write(f"{patient_clinical_schema_keys['age_key'] if 'age_key' in patient_clinical_schema_keys else 'AGE'}: {form_data.get('age', '')}\n")
-                f.write(f"{patient_clinical_schema_keys['oncotree_diag_key'] if 'oncotree_diag_key' in patient_clinical_schema_keys else 'DIAGNOSIS'}: {diagnosis_value}\n")
-                f.write(f"{patient_clinical_schema_keys['oncotree_diag_name_key'] if 'oncotree_diag_name_key' in patient_clinical_schema_keys else 'DIAGNOSIS_NAME'}: {diagnosis_value}\n")
-                f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
-                # Write TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE if present in session
-                tmb = session.get(patient_clinical_schema_keys['tmb_key'])
-                if tmb is not None:
-                    f.write(f"TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE: {tmb}\n")
-                # Write dynamic dropdowns as key-value pairs
-                for dd in dynamic_dropdowns:
-                    f.write(f"{dd['name']}: {dd['selected']}\n")
-                f.write("---\n")
-            logger.info(f"Successfully wrote clinical data file for {unique_id}")
-        except IOError as e:
-            logger.error(f"Failed to write clinical data file for {unique_id}: {str(e)}")
-            raise
+        # Save clinical data
+        data_file = DataProcessor.save_clinical_data(
+            unique_id, form_data, diagnosis_value, dynamic_dropdowns
+        )
         
-        # Start background processes to run get_patient_clinical_data.py and get_patient_genomic_data.py
-        clinical_script_path = os.path.join(os.path.dirname(__file__), 'patient_data', 'get_patient_clinical_data.py')
-        genomic_script_path = os.path.join(os.path.dirname(__file__), 'patient_data', 'get_patient_genomic_data.py')
-        
-        clinical_log_file = os.path.join(os.path.dirname(__file__), 'logs', 'get_patient_clinical_data.log')
-        genomic_log_file = os.path.join(os.path.dirname(__file__), 'logs', 'get_patient_genomic_data.log')
-        
-        clinical_start_msg = f"Starting clinical data conversion to MatchMiner format for {unique_id}"
-        clinical_finish_msg = f"Completed clinical data conversion to MatchMiner format for {unique_id}"
-        
-        genomic_start_msg = f"Starting genomic data conversion to MatchMiner format for {unique_id}"
-        genomic_finish_msg = f"Completed genomic data conversion to MatchMiner format for {unique_id}"
-        
-        # Start clinical data processing
-        try:
-            run_script_in_background(
-                script_path=clinical_script_path,
-                args=[data_file],  # Pass the clinical data text file name as argument
-                log_file=clinical_log_file,
-                start_msg=clinical_start_msg,
-                finish_msg=clinical_finish_msg
-            )
-            logger.info(f"Started background clinical data processing for {unique_id}")
-        except Exception as e:
-            logger.error(f"Failed to start background clinical data processing for {unique_id}: {str(e)}")
-            # Don't raise the exception here to avoid breaking the user flow
-        
-        # Start genomic data processing
-        try:
-            run_script_in_background(
-                script_path=genomic_script_path,
-                args=[data_file],  # Pass the extracted text file name as argument (same unique_id.txt)
-                log_file=genomic_log_file,
-                start_msg=genomic_start_msg,
-                finish_msg=genomic_finish_msg
-            )
-            logger.info(f"Started background genomic data processing for {unique_id}")
-        except Exception as e:
-            logger.error(f"Failed to start background genomic data processing for {unique_id}: {str(e)}")
-            # Don't raise the exception here to avoid breaking the user flow
+        # Start background processing
+        BackgroundProcessor.start_data_processing(unique_id, data_file)
         
         # Clear session data
-        session.pop('form_data', None)
-        session.pop('free_text_diagnosis', None)
-        session.pop('diagnosis_result', None)
-        session.pop('diagnosis_error', None)
+        session_keys_to_clear = ['form_data', 'free_text_diagnosis', 'diagnosis_result', 'diagnosis_error']
+        for key in session_keys_to_clear:
+            session.pop(key, None)
         logger.info(f"Cleared session data for {unique_id}")
         
-        # Redirect to confirmation page with banner and read-only fields
+        # Return confirmation page
         flash_msg = f"MatchMiner ID: {unique_id}\nPatient data recorded successfully. Please save the MatchMiner ID for future reference"
         return render_template(
             'confirmation.html',
@@ -610,9 +667,7 @@ def submit_review():
         
     except Exception as e:
         logger.exception(f"Error in submit_review for ID {form_data.get('unique_id', 'unknown')}: {str(e)}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        logger.error(f"Exception args: {e.args}")
         return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8890, debug=True) 
+    app.run(host=Config.HOST, port=Config.PORT, debug=Config.DEBUG) 
