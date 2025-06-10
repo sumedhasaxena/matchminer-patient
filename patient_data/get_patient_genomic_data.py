@@ -1,4 +1,3 @@
-
 import sys
 import os
 import json 
@@ -60,8 +59,13 @@ def get_and_append_gene_from_ncbi(text:str):
 
         
 def get_patent_genomic_data(genomic_text:str, file_name:str):
-   response = ai.get_patient_genomic_criteria(file_name, genomic_text)
-   return response
+   try:
+       response = ai.get_patient_genomic_criteria(file_name, genomic_text)
+       return response
+   except Exception as e:
+       logger.error(f"Error in genomic data processing for {file_name}: {str(e)}")
+       # Return empty list as fallback for connection errors
+       return []
 
 def main(text_file: str):
     combined_content = ""
