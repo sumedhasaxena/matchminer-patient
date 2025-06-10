@@ -13,6 +13,11 @@ def get_patient_genomic_criteria(id:str, genomic_data: str) -> dict:
 def parse_ai_response(ai_response):
     oncotree_diagnoses_dict = {}
 
+    # Check for connection errors first
+    if isinstance(ai_response, dict) and 'error' in ai_response:
+        logger.error(f"AI service error in response: {ai_response.get('message', 'Unknown error')}")
+        raise Exception(f"AI service error: {ai_response.get('message', 'Unknown error')}")
+
     try:
         if type(ai_response) is dict and 'choices' in ai_response.keys() and type(ai_response['choices']) is list:
             answer = ai_response['choices'][0]
