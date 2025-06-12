@@ -5,5 +5,7 @@ requests
 biopython
 pandas
 torch
+torchvision
+torchaudio
 pillow==10.4.0
-surya-ocr==0.13.1
+surya-ocr==0.14.6
