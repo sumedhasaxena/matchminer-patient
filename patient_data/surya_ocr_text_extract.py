@@ -9,6 +9,7 @@ USE_GPU = True
 
 # Always import typing for type hints
 from typing import List, TYPE_CHECKING
+from loguru import logger
 
 # Conditional imports based on GPU configuration
 if USE_GPU:
@@ -30,7 +31,7 @@ if USE_GPU:
 import argparse
 import os
 import time
-from loguru import logger
+import re
 
 extracted_text_dir = 'extracted_text'
 image_to_be_extracted_dir = 'images'
@@ -91,23 +92,50 @@ def get_mock_response() -> str:
     Return mock OCR response for non-GPU environments
     """
     return """
-ARFRP1 R177H NM_003224.3: c.530G>A(p.R177H), 530G>A, chr20:62331871 38.07% 
- CREBBP N435fs*4 NM_004380.2: c.1304dup(p.N435Kfs*4), 1304_1305insA, chr16:3842007 44.14% 
- FLCN H429fs*39 NM_144997.5: c.1285del(p.H429Tfs*39), 1285delC, chr17:17119708-17119709 41.29% 
- MRE11 
+<b>ARFRP1</b> R177H NM_003224.3: c.530G>A(p.R177H), 530G>A, chr20:62331871 38.07% 
+ <i>CREBBP</i> N435fs*4 NM_004380.2: c.1304dup(p.N435Kfs*4), 1304_1305insA, chr16:3842007 44.14% 
+ <strong>FLCN</strong> H429fs*39 NM_144997.5: c.1285del(p.H429Tfs*39), 1285delC, chr17:17119708-17119709 41.29% 
+ <b>MRE11</b> 
  Q582* NM_005590.3: c.1744C>T(p.Q582*), 1744C>T, chr11:94180424 48.54% 
  (MRE11A) 
- MSH2 Y408fs*9 NM_000251.1: c.1222dup(p.Y408Lfs*9), 1222_1223insT, chr2:47657025 43.98% 
+ <i>MSH2</i> Y408fs*9 NM_000251.1: c.1222dup(p.Y408Lfs*9), 1222_1223insT, chr2:47657025 43.98% 
  S271fs*2 NM_000251.1: c.811_814del(p.S271Rfs*2), 811_814delTCTG, chr2:47641422-47641 48.39% 
  426 
- PDGFRA exon 20 (A916T) NM_006206.4: c.2746G>A(p.A916T), 2746G>A, chr4:55155037 37.67% 
- QKI K134fs*14 NM_006775.2: c.401del(p.K134Rfs*14), 401delA, chr6:163899919-163899920 46.44% 
- ROST fusion GOPC(NM_020399)-ROS1(NM_002944) fusion (G8; R35) 
- SETD2 splice site 4715+1G>A NM_014159.6: c.4715+1G>A(p.?), 4715+1G>A, chr3:47155365 43.64% 
- SUFU R146* NM_016169.3: c.436C>T(p.R146*), 436C>T, chr10:104309845 43.46% 
- TP53 R337C NM_000546.4: c.1009C>T(p.R337C), 1009C>T, chr17:7574018 46.45% 
+ <strong>PDGFRA</strong> exon 20 (A916T) NM_006206.4: c.2746G>A(p.A916T), 2746G>A, chr4:55155037 37.67% 
+ <b>QKI</b> K134fs*14 NM_006775.2: c.401del(p.K134Rfs*14), 401delA, chr6:163899919-163899920 46.44% 
+ <i>ROST</i> fusion GOPC(NM_020399)-ROS1(NM_002944) fusion (G8; R35) 
+ <strong>SETD2</strong> splice site 4715+1G>A NM_014159.6: c.4715+1G>A(p.?), 4715+1G>A, chr3:47155365 43.64% 
+ <b>SUFU</b> R146* NM_016169.3: c.436C>T(p.R146*), 436C>T, chr10:104309845 43.46% 
+ <i>TP53</i> R337C NM_000546.4: c.1009C>T(p.R337C), 1009C>T, chr17:7574018 46.45% 
  L93fs*30 NM_000546.4: c.277del(p.L93Cfs*30), 277deIC, chr17:7579409-7579410 45.74%
 """
+
+def clean_html_tags(text: str) -> str:
+    """
+    Remove HTML tags from text while preserving the content
+    """
+    # Remove HTML tags using regex
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    # Remove extra whitespace
+    clean_text = re.sub(r'\s+', ' ', clean_text)
+    return clean_text.strip()
+
+def decode_html_entities(text: str) -> str:
+    """
+    Decode common HTML entities
+    """
+    import html
+    return html.unescape(text)
+
+def process_extracted_text(text: str, clean_html: bool = True, decode_entities: bool = True) -> str:
+    """
+    Process extracted text to clean HTML tags and decode entities
+    """
+    if clean_html:
+        text = clean_html_tags(text)
+    if decode_entities:
+        text = decode_html_entities(text)
+    return text
 
 def main(image_files: list[str], mmid: str):    
     combined_extracted_text = ""
@@ -115,8 +143,9 @@ def main(image_files: list[str], mmid: str):
     
     if not USE_GPU:
         logger.info("Running in non-GPU mode - using mock response")
-        combined_extracted_text = get_mock_response()
-        logger.info("Mock OCR response generated")
+        mock_text = get_mock_response()
+        combined_extracted_text = process_extracted_text(mock_text)
+        logger.info("Mock OCR response generated and processed")
     else:
         logger.info("Running in GPU mode - using Surya OCR")
         for image_file in image_files:
@@ -127,7 +156,8 @@ def main(image_files: list[str], mmid: str):
             if os.path.exists(image_path):
                 try:
                     extracted_text = extract_text_with_surya(image_path)
-                    combined_extracted_text += extracted_text + "\n"
+                    processed_text = process_extracted_text(extracted_text)
+                    combined_extracted_text += processed_text + "\n"
                     logger.info(f"Successfully extracted text from {image_file}")
                 except Exception as e:
                     logger.error(f"Error extracting text from {image_file}: {e}")
