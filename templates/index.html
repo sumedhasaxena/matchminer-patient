@@ -508,6 +508,66 @@
             visibility: visible;
             opacity: 1;
         }
+        .progress-item.error .progress-message {
+            color: #4a5568;
+        }
+
+        /* Auto-complete styles */
+        .autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .suggestions-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .suggestion-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f7fafc;
+            transition: background-color 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f7fafc;
+        }
+
+        .suggestion-item.selected {
+            background-color: #ebf8ff;
+            color: #2b6cb0;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-value {
+            font-weight: 500;
+            display: block;
+        }
+
+        .suggestion-parent {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 2px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -587,13 +647,17 @@
                     <tr>
                         <td>
                             <div class="tooltip-container">
-                                <label for="diagnosis_free_text">Diagnosis (free text):</label>
+                                <label for="diagnosis_free_text">Diagnosis:</label>
                                 <span class="tooltip-icon">i</span>
                                 <span class="tooltip-text">Enter diagnosis in free text. AI will map it to the most accurate OncoTree classification.</span>
                             </div>
                         </td>
                         <td colspan="2">
-                            <input type="text" id="diagnosis_free_text" name="diagnosis_free_text" value="{{ free_text_diagnosis or '' }}">
+                            <div class="autocomplete-container">
+                                <input type="text" id="diagnosis_free_text" name="diagnosis_free_text" value="{{ free_text_diagnosis or '' }}" 
+                                       placeholder="Start typing to see suggestions..." autocomplete="off">
+                                <div id="diagnosis-suggestions" class="suggestions-dropdown" style="display: none;"></div>
+                            </div>
                         </td>
                     </tr>
                     <tr>
@@ -724,6 +788,126 @@
         </form>
 
         <script>
+            // Auto-complete functionality
+            let autocompleteTimeout;
+            let selectedIndex = -1;
+            let suggestions = [];
+
+            function initAutocomplete() {
+                const input = document.getElementById('diagnosis_free_text');
+                const suggestionsDiv = document.getElementById('diagnosis-suggestions');
+
+                input.addEventListener('input', function() {
+                    clearTimeout(autocompleteTimeout);
+                    const query = this.value.trim();
+                    
+                    if (query.length < 2) {
+                        hideSuggestions();
+                        return;
+                    }
+
+                    // Debounce the search
+                    autocompleteTimeout = setTimeout(() => {
+                        searchSuggestions(query);
+                    }, 300);
+                });
+
+                input.addEventListener('keydown', function(e) {
+                    if (suggestions.length === 0) return;
+
+                    switch(e.key) {
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+                            updateSelectedSuggestion();
+                            break;
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            selectedIndex = Math.max(selectedIndex - 1, -1);
+                            updateSelectedSuggestion();
+                            break;
+                        case 'Enter':
+                            e.preventDefault();
+                            if (selectedIndex >= 0) {
+                                selectSuggestion(suggestions[selectedIndex]);
+                            }
+                            break;
+                        case 'Escape':
+                            hideSuggestions();
+                            break;
+                    }
+                });
+
+                // Hide suggestions when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                        hideSuggestions();
+                    }
+                });
+            }
+
+            function searchSuggestions(query) {
+                fetch(`/diagnosis_autocomplete?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        suggestions = data;
+                        selectedIndex = -1;
+                        displaySuggestions(data);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching suggestions:', error);
+                        hideSuggestions();
+                    });
+            }
+
+            function displaySuggestions(suggestions) {
+                const suggestionsDiv = document.getElementById('diagnosis-suggestions');
+                
+                if (suggestions.length === 0) {
+                    hideSuggestions();
+                    return;
+                }
+
+                suggestionsDiv.innerHTML = '';
+                suggestions.forEach((suggestion, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.dataset.index = index;
+                    
+                    item.innerHTML = `
+                        <div class="suggestion-value">${suggestion.value}</div>
+                        <div class="suggestion-parent">${suggestion.parent}</div>
+                    `;
+                    
+                    item.addEventListener('click', () => selectSuggestion(suggestion));
+                    item.addEventListener('mouseenter', () => {
+                        selectedIndex = index;
+                        updateSelectedSuggestion();
+                    });
+                    
+                    suggestionsDiv.appendChild(item);
+                });
+                
+                suggestionsDiv.style.display = 'block';
+            }
+
+            function updateSelectedSuggestion() {
+                const items = document.querySelectorAll('.suggestion-item');
+                items.forEach((item, index) => {
+                    item.classList.toggle('selected', index === selectedIndex);
+                });
+            }
+
+            function selectSuggestion(suggestion) {
+                document.getElementById('diagnosis_free_text').value = suggestion.value;
+                hideSuggestions();
+            }
+
+            function hideSuggestions() {
+                document.getElementById('diagnosis-suggestions').style.display = 'none';
+                selectedIndex = -1;
+            }
+
             function toggleHierarchy() {
                 const button = document.querySelector('.toggle-hierarchy');
                 const content = document.querySelector('.hierarchy-content');
@@ -1056,7 +1240,10 @@
             }
 
            // Initialize form fields on page load
-           document.addEventListener('DOMContentLoaded', updateDiagnosisLevel2);
+           document.addEventListener('DOMContentLoaded', function() {
+               updateDiagnosisLevel2();
+               initAutocomplete(); // Initialize auto-complete functionality
+           });
 
             function validateDiagnosis() {
                 console.log('Validating diagnosis...');
