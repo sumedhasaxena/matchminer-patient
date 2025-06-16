@@ -477,7 +477,8 @@ def index():
             gender = form_data.get('gender', '')
             age = form_data.get('age', '')
             diagnosis_free_text = form_data.get('diagnosis_free_text', '')
-            report_date = form_data.get('report_date', '')
+            # Use current date for report_date instead of form input
+            report_date = datetime.now().strftime('%Y-%m-%d')
             description = form_data.get('description', '')
 
             # Process uploaded images
