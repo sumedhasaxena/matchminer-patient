@@ -16,8 +16,43 @@ clinical_txt_dir = 'clinical_data'
 clinical_json_dir = 'clinical_json'
 
 def get_oncotree_diagnosis(mmid, value):
+    """
+    Oncotree diagnosis mapping:
+    1. If value is exact level2/level3 match, create hierarchy and return
+    2. If not exact match, use AI to find level1, then level2/level3
+    """
     level_1_diagnosis, level_2_diagnosis, level_3_diagnosis, mapping_l1_all, level1_to_level2, level2_to_level3 = onct.get_all_oncotree_data()
-    # First get level 1 diagnosis
+    
+    # Step 1: Check if value is an exact level2 or level3 match
+    if value in level_3_diagnosis:
+        # Find parent level2
+        for level2, level3s in level2_to_level3.items():
+            if value in level3s:
+                # Find parent level1
+                for level1, level2s in level1_to_level2.items():
+                    if level2 in level2s:
+                        logger.info(f"MMID: {mmid} | Found exact level3 match: {value}")
+                        return {
+                            'level1': level1,
+                            'level2': level2,
+                            'level3': value
+                        }
+    
+    elif value in level_2_diagnosis:
+        # Find parent level1
+        for level1, level2s in level1_to_level2.items():
+            if value in level2s:
+                logger.info(f"MMID: {mmid} | Found exact level2 match: {value}")
+                return {
+                    'level1': level1,
+                    'level2': value,
+                    'level3': None
+                }
+    
+    # Step 2: Not an exact match, use AI to find hierarchy
+    logger.info(f"MMID: {mmid} | No exact match found, using AI for: {value}")
+    
+    # Get level1 using AI
     result = ai.get_level1_diagnosis_from_free_text(mmid, {value}, level_1_diagnosis)
     
     # Check for connection errors in the AI response
@@ -26,13 +61,12 @@ def get_oncotree_diagnosis(mmid, value):
         raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
     
     level1_diagnosis = result.get('oncotree_diagnosis')
-    print(level1_diagnosis)
     
-    if not level1_diagnosis or level1_diagnosis.lower() == "other":
-        logger.debug(f"MMID: {mmid} | Skipping condition {value} as no oncotree diagnosis was returned")
+    if not level1_diagnosis:
+        logger.debug(f"MMID: {mmid} | No level1 diagnosis found for: {value}")
         return None
     
-    # Get child diagnosis
+    # Get child diagnosis (level2 or level3) using AI
     child_oncotree_values = mapping_l1_all[level1_diagnosis]
     result = ai.get_child_level_diagnosis_from_clinical_condition(mmid, child_oncotree_values, value)
     
@@ -42,32 +76,34 @@ def get_oncotree_diagnosis(mmid, value):
         raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
     
     child_diagnosis = result.get('oncotree_diagnosis', None)
-    logger.info(f"Child diagnosis: {child_diagnosis}")
+    
     if not child_diagnosis:
+        logger.info(f"MMID: {mmid} | No child diagnosis found, returning level1 only")
         return {
             'level1': level1_diagnosis,
             'level2': None,
             'level3': None
         }
     
-    # Check if child_diagnosis is in level2
-    for level1, level2s in level1_to_level2.items():
-        if child_diagnosis in level2s:
-            # It's a level2 diagnosis
-            return {
+    # Determine if child_diagnosis is level2 or level3
+    if child_diagnosis in level1_to_level2.get(level1_diagnosis, []):
+        # It's a level2 diagnosis
+        logger.info(f"MMID: {mmid} | AI found level2: {child_diagnosis}")
+        return {
             'level1': level1_diagnosis,
             'level2': child_diagnosis,
             'level3': None
         }
-   
-    # Check if child_diagnosis is in level3. It's a level3 diagnosis, find its parent level2
-    for level2, level3s in level2_to_level3.items():
-        if child_diagnosis in level3s:
-            return {
-                'level1': level1_diagnosis,
-                'level2': level2,
-                'level3': child_diagnosis
-            }
+    else:
+        # It's a level3 diagnosis, find its parent level2
+        for level2, level3s in level2_to_level3.items():
+            if child_diagnosis in level3s:
+                logger.info(f"MMID: {mmid} | AI found level3: {child_diagnosis}")
+                return {
+                    'level1': level1_diagnosis,
+                    'level2': level2,
+                    'level3': child_diagnosis
+                }
     
     # If we get here, something went wrong
     logger.error(f"MMID: {mmid} | Could not determine level for child diagnosis: {child_diagnosis}")
