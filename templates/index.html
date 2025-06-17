@@ -668,9 +668,9 @@
                             <td colspan="2">
                                 <select id="diagnosis_level2" name="diagnosis_level2" onchange="updateDiagnosisLevel3()">
                                     <option value="">Select Level 2</option>
-                                    {% if diagnosis_result.level2 %}
-                                    <option value="{{ diagnosis_result.level2 }}" selected>{{ diagnosis_result.level2 }}</option>
-                                    {% endif %}
+                                    {% for level2 in level2_list %}
+                                    <option value="{{ level2 }}" {% if diagnosis_result.level2 == level2 %}selected{% endif %}>{{ level2 }}</option>
+                                    {% endfor %}
                                 </select>
                             </td>
                         </tr>
@@ -679,9 +679,9 @@
                             <td colspan="2">
                                 <select id="diagnosis_level3" name="diagnosis_level3">
                                     <option value="">Select Level 3 (Optional)</option>
-                                    {% if diagnosis_result.level3 %}
-                                    <option value="{{ diagnosis_result.level3 }}" selected>{{ diagnosis_result.level3 }}</option>
-                                    {% endif %}
+                                    {% for level3 in level3_list %}
+                                    <option value="{{ level3 }}" {% if diagnosis_result.level3 == level3 %}selected{% endif %}>{{ level3 }}</option>
+                                    {% endfor %}
                                 </select>
                             </td>
                         </tr>
@@ -1200,7 +1200,18 @@
 
            // Initialize form fields on page load
            document.addEventListener('DOMContentLoaded', function() {
-               updateDiagnosisLevel2();
+               // Only update diagnosis dropdowns if there's no existing diagnosis data
+               const level1Select = document.getElementById('diagnosis_level1');
+               const level2Select = document.getElementById('diagnosis_level2');
+               const level3Select = document.getElementById('diagnosis_level3');
+               
+               // Check if dropdowns are already populated (from session data)
+               const hasExistingData = level1Select.value || level2Select.value || level3Select.value;
+               
+               if (!hasExistingData) {
+                   updateDiagnosisLevel2();
+               }
+               
                initAutocomplete(); // Initialize auto-complete functionality
            });
 

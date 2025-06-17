@@ -276,7 +276,7 @@ class DataProcessor:
                 if os.path.exists(image_path):
                     os.remove(image_path)
                     deleted_count += 1
-                    logger.debug(f"Deleted image: {image_path}")
+                    logger.info(f"Deleted image: {image_path}")
             except OSError as e:
                 logger.error(f"Failed to delete image {image_path} for {unique_id}: {str(e)}")
         
@@ -352,20 +352,17 @@ class DiagnosisProcessor:
     def build_dynamic_dropdowns() -> List[Dict[str, Any]]:
         """Build dynamic dropdowns from session data"""
         dynamic_dropdowns = []
-        value_to_key = {v: k for k, v in patient_clinical_schema_keys.items()}
-
-        for session_key in session.keys():
-            if session_key in value_to_key:
-                dropdown_key = value_to_key[session_key]
+        
+        for session_key, session_value in session.items():
+            if session_key in patient_clinical_schema_keys:
                 for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
                     for dropdown in rule['dropdowns']:
-                        if dropdown['name'] == dropdown_key:
-                            logger.info(f"Found dropdown match: {session_key} -> {dropdown_key}")
+                        if dropdown['name'] == session_key:
                             dynamic_dropdowns.append({
                                 'name': session_key,
                                 'label': dropdown['label'],
                                 'options': dropdown['values'],
-                                'selected': session[session_key]
+                                'selected': session_value
                             })
         return dynamic_dropdowns
 
@@ -507,22 +504,6 @@ def index():
                     session['diagnosis_error'] = diagnosis_error
                     flash(diagnosis_error)
                     return redirect(url_for('index'))
-                
-                # Extract additional clinical/genomic info from AI   
-                additional_info_dict = get_additional_info(unique_id, description)
-                logger.info(f"Retrieved additional info for {unique_id}")
-
-                 # Check for connection errors in the AI response
-                if isinstance(additional_info_dict, dict) and 'error' in additional_info_dict:
-                    logger.error(f"MMID: {unique_id} | AI service error in additional info: {additional_info_dict.get('message', 'Unknown error')}")
-                    flash(additional_info_dict['message'])
-                    return redirect(url_for('index'))
-                
-                # Extract and store individual values from additional info
-                for key, schema_key in patient_clinical_schema_keys.items():
-                    if schema_key in additional_info_dict:
-                        session[schema_key] = additional_info_dict[schema_key]
-                        logger.info(f"Stored {schema_key} in session for {unique_id}: {additional_info_dict[schema_key]}")           
             
             else:# When diagnosis was selected using dropdowns
                 try:
@@ -542,29 +523,43 @@ def index():
                     # Handle dynamic diagnosis dropdowns only when using dropdown selection
                     if diagnosis_result:
                         # Get the appropriate diagnosis level for dropdown rules
-                        diagnosis_for_rules = diagnosis_result.get('level2') or diagnosis_result.get('level1')
+                        diagnosis_levels = {diagnosis_result.get('level1'), diagnosis_result.get('level2'), diagnosis_result.get('level3')} - {None, ''}
                         
-                        if diagnosis_for_rules in DIAGNOSIS_DROPDOWN_RULES:
-                            # Get the dropdowns defined for this diagnosis
-                            dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]['dropdowns']
-                            
-                            # For each dropdown, check if it has a value in form_data
-                            for dropdown in dropdowns:
-                                # Find the schema key for this dropdown
-                                schema_key = None
-                                for key, value in patient_clinical_schema_keys.items():
-                                    if value == dropdown:
-                                        schema_key = value
-                                        break
+                        # Check each diagnosis level for dropdown rules
+                        for diagnosis_for_rules in diagnosis_levels:
+                            if diagnosis_for_rules in DIAGNOSIS_DROPDOWN_RULES:
+                                # Get the dropdowns defined for this diagnosis
+                                dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]['dropdowns']
                                 
-                                if schema_key and dropdown in form_data:
-                                    # Store the dropdown value in session using the schema key
-                                    session[schema_key] = form_data[dropdown]
-                                    logger.info(f"Stored dynamic dropdown {schema_key} in session for {unique_id}: {form_data[dropdown]}")
+                                # Store dropdown values in session
+                                for dropdown in dropdowns:
+                                    dropdown_name = dropdown['name']
+                                    if dropdown_name in form_data:
+                                        session[dropdown_name] = form_data[dropdown_name]
+                                        logger.info(f"Stored dynamic dropdown {dropdown_name} in session for {unique_id}: {form_data[dropdown_name]}")
                 
                 except Exception as e:
                     logger.exception(f"Error processing dropdown diagnosis for {unique_id}: {str(e)}")
                     raise
+
+            # Extract additional clinical/genomic info from AI
+            if description:
+                additional_info_dict = get_additional_info(unique_id, description)
+                logger.info(f"Retrieved additional info for {unique_id}")
+
+                # Check for connection errors in the AI response
+                if isinstance(additional_info_dict, dict) and 'error' in additional_info_dict:
+                    logger.error(f"MMID: {unique_id} | AI service error in additional info: {additional_info_dict.get('message', 'Unknown error')}")
+                    flash(additional_info_dict['message'])
+                    return redirect(url_for('index'))
+                
+                # Store additional info in session
+                for schema_key, value in additional_info_dict.items():
+                    if schema_key in patient_clinical_schema_keys.values():
+                        session[schema_key] = value
+                        logger.info(f"Stored {schema_key} in session for {unique_id}: {value}")
+            else:
+                logger.debug(f"MMID: {unique_id} | No additional description found")
 
             # Store form data in session
             session['form_data'] = {
@@ -601,6 +596,12 @@ def index():
     diagnosis_result = session.get('diagnosis_result', {})
     free_text_diagnosis = session.get('free_text_diagnosis', '')
     extracted_text = session.get('extracted_text', '')
+    
+    # Prepare level2 and level3 lists for dropdown population
+    selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
+    selected_level2 = diagnosis_result.get('level2') if diagnosis_result else None
+    level2_list = level1_to_level2.get(selected_level1, []) if selected_level1 else []
+    level3_list = level2_to_level3.get(selected_level2, []) if selected_level2 else []
 
     return render_template(
         'index.html',
@@ -609,6 +610,8 @@ def index():
         free_text_diagnosis=free_text_diagnosis,
         extracted_text=extracted_text,
         level1_list=level1_list,
+        level2_list=level2_list,
+        level3_list=level3_list,
     )
 
 @app.route('/review', methods=['GET'])
