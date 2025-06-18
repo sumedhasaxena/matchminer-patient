@@ -452,7 +452,7 @@ def get_additional_diagnosis_dropdowns(diagnosis: str):
 @app.route('/back_to_index')
 def back_to_index():
     """Redirect back to index page"""
-    return redirect(url_for('index'))
+    return redirect(url_for('index', from_review=1))
 
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
@@ -553,11 +553,48 @@ def index():
                     flash(additional_info_dict['message'])
                     return redirect(url_for('index'))
                 
-                # Store additional info in session
+                # Track conflicts between manual dropdown values and AI-inferred values
+                conflicts = []
+                
+                # Store additional info in session and check for conflicts
                 for schema_key, value in additional_info_dict.items():
-                    if schema_key in patient_clinical_schema_keys.values():
-                        session[schema_key] = value
-                        logger.info(f"Stored {schema_key} in session for {unique_id}: {value}")
+                    for patient_clinical_schema_key, patient_clinical_schema_value in patient_clinical_schema_keys.items():
+                        if schema_key == patient_clinical_schema_value:
+                            # Check if this key already has a manual value from dropdowns
+                            if patient_clinical_schema_key in session:
+                                manual_value = session[patient_clinical_schema_key]
+                                ai_value = value
+                                
+                                if manual_value != ai_value:
+                                    # Conflict detected - keep manual value, track for user info
+                                    # Robustly find dropdowns by checking level1, level2, then level3
+                                    dropdowns = (
+                                        DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level1', '')) or
+                                        DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level2', '')) or
+                                        DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level3', '')) or
+                                        {}
+                                    ).get('dropdowns', [])
+                                    field_label = next((dd['label'] for dd in dropdowns if dd['name'] == patient_clinical_schema_key), patient_clinical_schema_key)
+                                    conflicts.append(f"{field_label}: Manual = '{manual_value}' vs Description = '{ai_value}'")
+                                    logger.info(f"Conflict detected for {patient_clinical_schema_value}: Manual = '{manual_value}' vs Description = '{ai_value}' - using manual value")
+                                else:
+                                    # Values match, no conflict
+                                    logger.info(f"Values match for {patient_clinical_schema_key}: '{manual_value}'")
+                            else:
+                                # No existing value, safe to store AI value
+                                session[patient_clinical_schema_key] = value
+                                logger.info(f"Stored {patient_clinical_schema_key} in session for {unique_id}: {value}")
+                
+                # Inform user about conflicts if any
+                if conflicts:
+                    conflict_message = (
+                        "<strong>Warning:</strong> Conflict(s) detected between manually selected values and additional description.<br>"                        
+                        + "<br>".join(conflicts)
+                        + "<br>Manually selected values will be recorded.<br>"
+                    )
+                    flash(conflict_message)
+                    logger.info(f"User informed about {len(conflicts)} conflicts")
+                    
             else:
                 logger.debug(f"MMID: {unique_id} | No additional description found")
 
@@ -715,7 +752,7 @@ def submit_review():
             DataProcessor.delete_uploaded_images(image_paths, unique_id)
         
         # Clear session data
-        session_keys_to_clear = ['form_data', 'free_text_diagnosis', 'diagnosis_result', 'diagnosis_error']
+        session_keys_to_clear = ['form_data', 'free_text_diagnosis', 'diagnosis_result', 'diagnosis_error', 'dynamic_dropdowns']
         for key in session_keys_to_clear:
             session.pop(key, None)
         logger.info(f"Cleared session data for {unique_id}")
