@@ -186,7 +186,8 @@ def get_additional_info(mmid:str, additional_info: str)-> dict:
 
 def get_additional_info_prompt(additional_info):
     prompt = f"""Task: Analyze the provided description and identify the status of specific conditions. Only include conditions mentioned in the description and omit any absent fields.
-    Add HER2/ER/PR status if description mentions TNBC.
+    Add HER2/ER/PR status as negative if description mentions TNBC (Triple Negative Breast Cancer).
+    If MSI status is mentioned as MSS/MS-stable, add 'MMR_STATUS' as 'Proficient (MMR-P / MSS)'
 
 Conditions and Expected Output:
 HER2: HER2_STATUS - Positive/Negative/Unknown
