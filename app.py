@@ -433,7 +433,6 @@ def diagnosis_autocomplete():
 def get_additional_diagnosis_dropdowns(diagnosis: str):
     """API endpoint to get dropdown options for a specific diagnosis"""
     diagnosis = unquote(diagnosis)
-    logger.debug(f"Received request for diagnosis: {diagnosis}")
     
     parts = diagnosis.split(' > ')
     level1 = parts[0] if len(parts) > 0 else ''
@@ -482,7 +481,7 @@ def index():
             image_files = request.files.getlist('genomic_images')
             try:
                 image_filenames, extracted_text = DataProcessor.process_uploaded_images(unique_id, image_files)
-                logger.info(f"Processed {len(image_filenames)} images for {unique_id}")
+                logger.info(f"{unique_id} | Processed {len(image_filenames)} images ")
             except Exception as e:
                 logger.exception(f"Error processing images for {unique_id}: {str(e)}")
                 raise
@@ -490,12 +489,14 @@ def index():
             # Store extracted text in session if available
             if extracted_text:
                 session['extracted_text'] = extracted_text
-                logger.info(f"Stored extracted text in session for {unique_id}")
+                logger.info(f"{unique_id} | OCR extracted text :  Added to session -> key 'extracted_text', value : {{extracted_text}}")
 
             # Get diagnosis result
             if diagnosis_free_text:
                 session['free_text_diagnosis'] = diagnosis_free_text
-                logger.info(f"Processing free text diagnosis for {unique_id}: {diagnosis_free_text}")
+                
+                logger.info(f"{unique_id} | free text diagnosis :  Added to session -> key 'free_text_diagnosis', value : {{diagnosis_free_text}}")
+                logger.info(f"{unique_id} | Processing free text diagnosis for : {diagnosis_free_text}")
 
                 diagnosis_result, diagnosis_error = DiagnosisProcessor.get_diagnosis_result(
                     unique_id, diagnosis_free_text)
@@ -506,6 +507,7 @@ def index():
                     return redirect(url_for('index'))
             
             else:# When diagnosis was selected using dropdowns
+                logger.info(f"{unique_id} | Processing manually selected diagnosis")
                 try:
                     diagnosis_result, diagnosis_error = DiagnosisProcessor.get_diagnosis_result(
                         unique_id=unique_id,
@@ -513,7 +515,6 @@ def index():
                         diagnosis_level2=form_data.get('diagnosis_level2', ''),
                         diagnosis_level3=form_data.get('diagnosis_level3', '')
                     )
-                    logger.info(f"Processed dropdown diagnosis for {unique_id}")
 
                     if diagnosis_error:
                         session['diagnosis_error'] = diagnosis_error
@@ -536,7 +537,7 @@ def index():
                                     dropdown_name = dropdown['name']
                                     if dropdown_name in form_data:
                                         session[dropdown_name] = form_data[dropdown_name]
-                                        logger.info(f"Stored dynamic dropdown {dropdown_name} in session for {unique_id}: {form_data[dropdown_name]}")
+                                        logger.info(f"{unique_id} | Manual diagnosis : Added to session -> key : {dropdown_name}, Value: {form_data[dropdown_name]}")
                 
                 except Exception as e:
                     logger.exception(f"Error processing dropdown diagnosis for {unique_id}: {str(e)}")
@@ -544,8 +545,8 @@ def index():
 
             # Extract additional clinical/genomic info from AI
             if description:
+                logger.info(f"{unique_id} | Processing additional description")
                 additional_info_dict = get_additional_info(unique_id, description)
-                logger.info(f"Retrieved additional info for {unique_id}")
 
                 # Check for connection errors in the AI response
                 if isinstance(additional_info_dict, dict) and 'error' in additional_info_dict:
@@ -567,7 +568,6 @@ def index():
                                 
                                 if manual_value != ai_value:
                                     # Conflict detected - keep manual value, track for user info
-                                    # Robustly find dropdowns by checking level1, level2, then level3
                                     dropdowns = (
                                         DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level1', '')) or
                                         DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level2', '')) or
@@ -576,14 +576,12 @@ def index():
                                     ).get('dropdowns', [])
                                     field_label = next((dd['label'] for dd in dropdowns if dd['name'] == patient_clinical_schema_key), patient_clinical_schema_key)
                                     conflicts.append(f"{field_label}: Manual = '{manual_value}' vs Description = '{ai_value}'")
-                                    logger.info(f"Conflict detected for {patient_clinical_schema_value}: Manual = '{manual_value}' vs Description = '{ai_value}' - using manual value")
-                                else:
-                                    # Values match, no conflict
-                                    logger.info(f"Values match for {patient_clinical_schema_key}: '{manual_value}'")
+                                    logger.info(f"{unique_id} | Conflict detected for {patient_clinical_schema_value}: Manual = '{manual_value}' vs Description = '{ai_value}' - using manual value")
+                               
                             else:
                                 # No existing value, safe to store AI value
                                 session[patient_clinical_schema_key] = value
-                                logger.info(f"Stored {patient_clinical_schema_key} in session for {unique_id}: {value}")
+                                logger.info(f"{unique_id} | Additional info : Added to session -> Key : {patient_clinical_schema_key}, Value : {value}")
                 
                 # Inform user about conflicts if any
                 if conflicts:
@@ -593,10 +591,9 @@ def index():
                         + "<br>Manually selected values will be recorded.<br>"
                     )
                     flash(conflict_message)
-                    logger.info(f"User informed about {len(conflicts)} conflicts")
                     
             else:
-                logger.debug(f"MMID: {unique_id} | No additional description found")
+                logger.debug(f"{unique_id} | No additional description found")
 
             # Store form data in session
             session['form_data'] = {
@@ -608,9 +605,8 @@ def index():
                 'genomic_images': image_filenames
             }
             session['diagnosis_result'] = diagnosis_result
-            logger.info(f"Stored form data and diagnosis result in session for {unique_id}")
 
-            logger.info('Session values after form submission:')
+            logger.info(f'{unique_id} |Session values after form submission:')
             for key, value in session.items():
                 logger.info(f'{key}: {value}')
 
@@ -711,12 +707,18 @@ def submit_review():
         unique_id = form_data.get('unique_id')
         logger.info(f"Processing review submission for ID: {unique_id}")
         
-        # Update extracted text
-        updated_extracted_text = request.form.get('extracted_text', '')
-        session['extracted_text'] = updated_extracted_text
+        # Check if extracted text was modified during review
+        original_text = session.get('extracted_text', '').strip()
+        updated_extracted_text = request.form.get('extracted_text', '').strip()
         
-        # Save extracted text
-        DataProcessor.save_extracted_text(unique_id, updated_extracted_text)
+        if updated_extracted_text and updated_extracted_text != original_text:
+            # Text was modified during review
+            session['extracted_text'] = updated_extracted_text
+            # Save extracted text
+            DataProcessor.save_extracted_text(unique_id, updated_extracted_text)
+            logger.info(f"Saved modified extracted text for {unique_id}")
+        else:
+            logger.debug(f"No changes to extracted text for {unique_id}")
         
         # Determine diagnosis value
         diagnosis_value = diagnosis_level3 or diagnosis_level2
