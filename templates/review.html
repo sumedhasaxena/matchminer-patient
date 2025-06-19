@@ -300,6 +300,15 @@
                         </td>
                     </tr>
                     {% endfor %}
+                    <!-- Dynamic Text Boxes -->
+                    {% for dt in dynamic_texts %}
+                    <tr>
+                        <td><label for="{{ dt.name }}">{{ dt.label }}:</label></td>
+                        <td colspan="2">
+                            <input type="text" id="{{ dt.name }}" name="{{ dt.name }}" value="{{ dt.value }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
                 </table>
             </div>
             <div class="section">

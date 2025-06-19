@@ -185,7 +185,8 @@ class DataProcessor:
 
     @staticmethod
     def save_clinical_data(unique_id: str, form_data: Dict[str, Any], 
-                          diagnosis_value: str, dynamic_dropdowns: List[Dict[str, Any]]) -> str:
+                          diagnosis_value: str, dynamic_dropdowns: List[Dict[str, Any]], 
+                          dynamic_texts: List[Dict[str, Any]]) -> str:
         """Save clinical data to text file and return the filename"""
         data_file = f"{unique_id}.txt"
         file_path = os.path.join(Config.TEXT_FOLDER, data_file)
@@ -201,14 +202,16 @@ class DataProcessor:
                 f.write(f"{patient_clinical_schema_keys.get('oncotree_diag_name_key', 'DIAGNOSIS_NAME')}: {diagnosis_value}\n")
                 f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
                 
-                # Write TMB if present
-                tmb = session.get(patient_clinical_schema_keys['tmb_key'])
-                if tmb is not None:
-                    f.write(f"TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE: {tmb}\n")
-                
                 # Write dynamic dropdowns
                 for dd in dynamic_dropdowns:
-                    f.write(f"{dd['name']}: {dd['selected']}\n")
+                    schema_key = patient_clinical_schema_keys.get(dd['name'], dd['name'])
+                    f.write(f"{schema_key}: {dd['selected']}\n")
+                
+                # Write dynamic text fields
+                for dt in dynamic_texts:
+                    schema_key = patient_clinical_schema_keys.get(dt['name'], dt['name'])
+                    f.write(f"{schema_key}: {dt['value']}\n")
+                
                 f.write("---\n")
             
             logger.info(f"Successfully saved clinical data for {unique_id}")
@@ -356,15 +359,35 @@ class DiagnosisProcessor:
         for session_key, session_value in session.items():
             if session_key in patient_clinical_schema_keys:
                 for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
-                    for dropdown in rule['dropdowns']:
-                        if dropdown['name'] == session_key:
-                            dynamic_dropdowns.append({
-                                'name': session_key,
-                                'label': dropdown['label'],
-                                'options': dropdown['values'],
-                                'selected': session_value
-                            })
+                    # Safely check if 'dropdowns' key exists
+                    if 'dropdowns' in rule:
+                        for dropdown in rule['dropdowns']:
+                            if dropdown['name'] == session_key:
+                                dynamic_dropdowns.append({
+                                    'name': session_key,
+                                    'label': dropdown['label'],
+                                    'options': dropdown['values'],
+                                    'selected': session_value
+                                })
         return dynamic_dropdowns
+    
+    def build_dynamic_texts() -> List[Dict[str, Any]]:
+        """Build dynamic textbox items from session data"""
+        dynamic_texts = []
+        
+        for session_key, session_value in session.items():
+            if session_key in patient_clinical_schema_keys:
+                for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
+                    # Safely check if 'texts' key exists
+                    if 'texts' in rule:
+                        for text in rule['texts']:
+                            if text['name'] == session_key:
+                                dynamic_texts.append({
+                                    'name': session_key,
+                                    'label': text['label'],
+                                    'value': session_value
+                                })
+        return dynamic_texts
 
 # Route handlers
 @app.route('/debug/oncotree')
@@ -441,10 +464,12 @@ def get_additional_diagnosis_dropdowns(diagnosis: str):
     dropdowns = []
     
     if level1 in DIAGNOSIS_DROPDOWN_RULES:
-        dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level1]['dropdowns'])
+        if 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[level1]:
+            dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level1]['dropdowns'])
     
     if level2 in DIAGNOSIS_DROPDOWN_RULES:
-        dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level2]['dropdowns'])
+        if 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[level2]:
+            dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level2]['dropdowns'])
     
     return jsonify(dropdowns)
 
@@ -530,14 +555,15 @@ def index():
                         for diagnosis_for_rules in diagnosis_levels:
                             if diagnosis_for_rules in DIAGNOSIS_DROPDOWN_RULES:
                                 # Get the dropdowns defined for this diagnosis
-                                dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]['dropdowns']
-                                
-                                # Store dropdown values in session
-                                for dropdown in dropdowns:
-                                    dropdown_name = dropdown['name']
-                                    if dropdown_name in form_data:
-                                        session[dropdown_name] = form_data[dropdown_name]
-                                        logger.info(f"{unique_id} | Manual diagnosis : Added to session -> key : {dropdown_name}, Value: {form_data[dropdown_name]}")
+                                if 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]:
+                                    dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]['dropdowns']
+                                    
+                                    # Store dropdown values in session
+                                    for dropdown in dropdowns:
+                                        dropdown_name = dropdown['name']
+                                        if dropdown_name in form_data:
+                                            session[dropdown_name] = form_data[dropdown_name]
+                                            logger.info(f"{unique_id} | Manual diagnosis : Added to session -> key : {dropdown_name}, Value: {form_data[dropdown_name]}")
                 
                 except Exception as e:
                     logger.exception(f"Error processing dropdown diagnosis for {unique_id}: {str(e)}")
@@ -568,12 +594,14 @@ def index():
                                 
                                 if manual_value != ai_value:
                                     # Conflict detected - keep manual value, track for user info
-                                    dropdowns = (
-                                        DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level1', '')) or
-                                        DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level2', '')) or
-                                        DIAGNOSIS_DROPDOWN_RULES.get(diagnosis_result.get('level3', '')) or
-                                        {}
-                                    ).get('dropdowns', [])
+                                    dropdowns = []
+                                    if diagnosis_result.get('level1') in DIAGNOSIS_DROPDOWN_RULES and 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level1')]:
+                                        dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level1')]['dropdowns']
+                                    elif diagnosis_result.get('level2') in DIAGNOSIS_DROPDOWN_RULES and 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level2')]:
+                                        dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level2')]['dropdowns']
+                                    elif diagnosis_result.get('level3') in DIAGNOSIS_DROPDOWN_RULES and 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level3')]:
+                                        dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level3')]['dropdowns']
+                                    
                                     field_label = next((dd['label'] for dd in dropdowns if dd['name'] == patient_clinical_schema_key), patient_clinical_schema_key)
                                     conflicts.append(f"{field_label}: Manual = '{manual_value}' vs Description = '{ai_value}'")
                                     logger.info(f"{unique_id} | Conflict detected for {patient_clinical_schema_value}: Manual = '{manual_value}' vs Description = '{ai_value}' - using manual value")
@@ -661,6 +689,7 @@ def review():
 
     # Build dynamic dropdowns
     dynamic_dropdowns = DiagnosisProcessor.build_dynamic_dropdowns()
+    dynamic_texts = DiagnosisProcessor.build_dynamic_texts()
     
     # Prepare level2 and level3 lists
     selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
@@ -670,6 +699,7 @@ def review():
    
     # Store dynamic_dropdowns in session
     session['dynamic_dropdowns'] = dynamic_dropdowns
+    session['dynamic_texts'] = dynamic_texts
 
     return render_template(
         'review.html',
@@ -679,6 +709,7 @@ def review():
         diagnosis_result=diagnosis_result,
         diagnosis_error=diagnosis_error,
         dynamic_dropdowns=dynamic_dropdowns,
+        dynamic_texts=dynamic_texts,
         level2_list=level2_list,
         level3_list=level3_list
     )
@@ -739,9 +770,24 @@ def submit_review():
                 'selected': selected_value
             })
 
+        # Process dynamic text boxes
+        session_dynamic_texts = session.get('dynamic_texts', [])
+        if not session_dynamic_texts:
+            logger.warning(f"No dynamic texts found in session for {unique_id}")
+        
+        dynamic_texts = []
+        for dt in session_dynamic_texts:
+            key = dt['name']
+            text_value = request.form.get(key, '')
+            dynamic_texts.append({
+                'name': key,
+                'label': dt['label'],
+                'value': text_value
+            })
+
         # Save clinical data
         data_file = DataProcessor.save_clinical_data(
-            unique_id, form_data, diagnosis_value, dynamic_dropdowns
+            unique_id, form_data, diagnosis_value, dynamic_dropdowns, dynamic_texts
         )
         
         # Start background processing
@@ -772,6 +818,7 @@ def submit_review():
                 'level3': diagnosis_level3
             },
             dynamic_dropdowns=dynamic_dropdowns,
+            dynamic_texts=dynamic_texts,
             level2_list=level1_to_level2.get(diagnosis_level1, []),
             level3_list=level2_to_level3.get(diagnosis_level2, []),
             success_message=flash_msg

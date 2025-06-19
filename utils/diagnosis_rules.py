@@ -1,7 +1,14 @@
 """Configuration for diagnosis-specific dropdown rules"""
 
 DIAGNOSIS_DROPDOWN_RULES = {
-    
+    '_' : {
+        'texts':[
+            {
+                'label': 'Tumor Mutational Burden',
+                'name': 'tmb_key'
+            }
+        ]
+    },
     'Diffuse Glioma': {
         'dropdowns': [
             {
@@ -57,4 +64,4 @@ DIAGNOSIS_DROPDOWN_RULES = {
             }
         ]
     }
-} 
+}
