@@ -1,0 +1,12 @@
+__pycache__/*
+utils/__pycache__/*
+patient_data/extracted_text/*
+patient_data/clinical_data/*
+patient_data/clinical_json/*
+patient_data/images/*
+patient_data/genomic_json/*
+patient_data/__pycache__/*
+.vscode/launch.json
+logs/*
+*.pyc
+
