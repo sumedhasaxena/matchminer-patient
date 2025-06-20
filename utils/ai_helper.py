@@ -110,22 +110,27 @@ Each JSON object may contain following fields:
 4. TRUE_PROTEIN_CHANGE: Protein change if described in the report. Example: "p.R146*". If the variant is a fusion, don't add this field.
 5. CNV_CALL: If the 'VARIANT_CATEGORY' = 'CNV', the value for this field should be one of the following values: ["High level amplification", "Homozygous deletion", "Gain", "Heterozygous deletion"].Otherwise, exclude this field.
 6. If the instructions mention IDH wildtype, add a section with 'TRUE_HUGO_SYMBOL' as IDH, and 'WILDTYPE' as true/false.
+7. MMR_STATUS: Add a separate object to specify MMR Status. Allowed Values: ['Proficient (MMR-P / MSS)','Deficient (MMR-D / MSI-H)']
 
 Example:
 FLCN H429fs*39 NM_144997.5: c.128Sdel(p.H429Tfs*39), 1285delC
 ROS1 fusion GOPC(NM_020399)-ROS1(NM_002944) fusion (G8; R35)
+Microsatellite status: MSI-High
 Output:
 {{
-        "WILDTYPE": false,
-        "TRUE_HUGO_SYMBOL": "FLCN",
-        "VARIANT_CATEGORY": "MUTATION",         
-        "TRUE_VARIANT_CLASSIFICATION": "Frame_Shift_Del",
-        "TRUE_PROTEIN_CHANGE": "p.H429Tfs*39"
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "FLCN",
+    "VARIANT_CATEGORY": "MUTATION",         
+    "TRUE_VARIANT_CLASSIFICATION": "Frame_Shift_Del",
+    "TRUE_PROTEIN_CHANGE": "p.H429Tfs*39"
 }},
 {{
-        "WILDTYPE": false,
-        "TRUE_HUGO_SYMBOL": "ROS1",
-        "VARIANT_CATEGORY": "SV"
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "ROS1",
+    "VARIANT_CATEGORY": "SV"
+}},
+{{
+    MMR_STATUS: 'Deficient (MMR-D / MSI-H)'
 }}
 """
     
