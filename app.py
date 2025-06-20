@@ -24,7 +24,7 @@ from loguru import logger
 # Local imports
 from utils.oncotree import get_l1_l2_l3_oncotree_data
 from utils.diagnosis_rules import DIAGNOSIS_DROPDOWN_RULES
-from patient_data.patient_clinical_data_config import patient_clinical_schema_keys
+from patient_data.patient_data_config import patient_schema_keys, get_clinical_fields, is_clinical_field
 from patient_data.get_patient_clinical_data import get_oncotree_diagnosis, get_additional_info
 
 # Configuration
@@ -194,22 +194,22 @@ class DataProcessor:
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 # Write basic patient information
-                f.write(f"{patient_clinical_schema_keys['sample_id_key']}: {unique_id}\n")
-                f.write(f"{patient_clinical_schema_keys['mrn_key']}: {unique_id}\n")
-                f.write(f"{patient_clinical_schema_keys['gender_key']}: {form_data.get('gender', '')}\n")
-                f.write(f"{patient_clinical_schema_keys.get('age_key', 'AGE')}: {form_data.get('age', '')}\n")
-                f.write(f"{patient_clinical_schema_keys.get('oncotree_diag_key', 'DIAGNOSIS')}: {diagnosis_value}\n")
-                f.write(f"{patient_clinical_schema_keys.get('oncotree_diag_name_key', 'DIAGNOSIS_NAME')}: {diagnosis_value}\n")
-                f.write(f"{patient_clinical_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
+                f.write(f"{patient_schema_keys['sample_id_key']}: {unique_id}\n")
+                f.write(f"{patient_schema_keys['mrn_key']}: {unique_id}\n")
+                f.write(f"{patient_schema_keys['gender_key']}: {form_data.get('gender', '')}\n")
+                f.write(f"{patient_schema_keys.get('age_key', 'AGE')}: {form_data.get('age', '')}\n")
+                f.write(f"{patient_schema_keys.get('oncotree_diag_key', 'DIAGNOSIS')}: {diagnosis_value}\n")
+                f.write(f"{patient_schema_keys.get('oncotree_diag_name_key', 'DIAGNOSIS_NAME')}: {diagnosis_value}\n")
+                f.write(f"{patient_schema_keys['report_date_key']}: {form_data.get('report_date', '')}\n")
                 
-                # Write dynamic dropdowns
+                # Write dynamic dropdowns (both clinical and genomic)
                 for dd in dynamic_dropdowns:
-                    schema_key = patient_clinical_schema_keys.get(dd['name'], dd['name'])
+                    schema_key = patient_schema_keys.get(dd['name'], dd['name'])
                     f.write(f"{schema_key}: {dd['selected']}\n")
                 
-                # Write dynamic text fields
+                # Write dynamic text fields (both clinical and genomic)
                 for dt in dynamic_texts:
-                    schema_key = patient_clinical_schema_keys.get(dt['name'], dt['name'])
+                    schema_key = patient_schema_keys.get(dt['name'], dt['name'])
                     f.write(f"{schema_key}: {dt['value']}\n")
                 
                 f.write("---\n")
@@ -357,7 +357,7 @@ class DiagnosisProcessor:
         dynamic_dropdowns = []
         
         for session_key, session_value in session.items():
-            if session_key in patient_clinical_schema_keys:
+            if session_key in patient_schema_keys:
                 for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
                     # Safely check if 'dropdowns' key exists
                     if 'dropdowns' in rule:
@@ -376,7 +376,7 @@ class DiagnosisProcessor:
         dynamic_texts = []
         
         for session_key, session_value in session.items():
-            if session_key in patient_clinical_schema_keys:
+            if session_key in patient_schema_keys:
                 for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
                     # Safely check if 'texts' key exists
                     if 'texts' in rule:
@@ -585,7 +585,7 @@ def index():
                 
                 # Store additional info in session and check for conflicts
                 for schema_key, value in additional_info_dict.items():
-                    for patient_clinical_schema_key, patient_clinical_schema_value in patient_clinical_schema_keys.items():
+                    for patient_clinical_schema_key, patient_clinical_schema_value in patient_schema_keys.items():
                         if schema_key == patient_clinical_schema_value:
                             # Check if this key already has a manual value from dropdowns
                             if patient_clinical_schema_key in session:
@@ -785,12 +785,12 @@ def submit_review():
                 'value': text_value
             })
 
-        # Save clinical data
+        # Save clinical data (write all fields to text file, but filter for clinical processing)
         data_file = DataProcessor.save_clinical_data(
             unique_id, form_data, diagnosis_value, dynamic_dropdowns, dynamic_texts
         )
         
-        # Start background processing
+        # Start background processing with clinical-only fields
         BackgroundProcessor.start_data_processing(unique_id, data_file)
         
         # Delete uploaded images after successful submission and background processing start

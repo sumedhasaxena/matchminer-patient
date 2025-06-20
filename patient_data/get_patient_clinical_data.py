@@ -8,7 +8,7 @@ import utils.oncotree as onct
 import argparse
 from datetime import datetime
 from loguru import logger
-from patient_data.patient_clinical_data_config import patient_clinical_schema_keys
+from patient_data.patient_data_config import patient_schema_keys, get_clinical_fields, is_clinical_field
 # Set up Loguru to log to a file (e.g., logs/app.log)
 logger.add("logs/app.log", rotation="10 MB", retention="10 days", enqueue=True)
 
@@ -131,9 +131,12 @@ def parse_clinical_data(text_file):
 def convert_to_clinical_data_format(text_file):
     data = {}
     clinical_data = parse_clinical_data(text_file)
+    
+    # Get only clinical fields from the schema
+    clinical_schema_keys = get_clinical_fields()
 
-    # Populate the output JSON based on the defined keys
-    for key_id, official_key in patient_clinical_schema_keys.items():
+    # Populate the output JSON based on the clinical keys only
+    for key_id, official_key in clinical_schema_keys.items():
         #if official_key in clinical_data:
             if key_id == "birth_date_key":
                 data[official_key] = calculate_birth_date(clinical_data.get("AGE", ""))
