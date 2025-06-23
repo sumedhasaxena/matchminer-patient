@@ -115,9 +115,11 @@ Each JSON object may contain following fields:
 Example:
 FLCN H429fs*39 NM_144997.5: c.128Sdel(p.H429Tfs*39), 1285delC
 ROS1 fusion GOPC(NM_020399)-ROS1(NM_002944) fusion (G8; R35)
+TERT promoter -124C>T NM_198253.2: c.-124C>T, -124C>T
 Microsatellite status: MSI-High
+IDH_WILDTYPE: True
 Output:
-{{
+[[{{
     "WILDTYPE": false,
     "TRUE_HUGO_SYMBOL": "FLCN",
     "VARIANT_CATEGORY": "MUTATION",         
@@ -127,11 +129,21 @@ Output:
 {{
     "WILDTYPE": false,
     "TRUE_HUGO_SYMBOL": "ROS1",
-    "VARIANT_CATEGORY": "SV"
+    "VARIANT_CATEGORY": "MUTATION"
 }},
 {{
-    MMR_STATUS: 'Deficient (MMR-D / MSI-H)'
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "TERT",
+    "VARIANT_CATEGORY": "MUTATION"
+    "TRUE_VARIANT_CLASSIFICATION": "5'Flank",
 }}
+{{
+    MMR_STATUS: 'Deficient (MMR-D / MSI-H)'
+}},
+{{
+    "WILDTYPE": true,
+    "TRUE_HUGO_SYMBOL": "IDH",
+}}]]
 """
     
     return prompt

@@ -78,6 +78,7 @@ def main(text_file: str):
         ocr_content = file.read()        
         modified_lines = get_and_append_gene_from_census(ocr_content)
         combined_content += modified_lines
+        combined_content += "\n"
 
     # read clinical data
     CLINICAL_TXT_FILE_PATH = os.path.join(current_dir, clinical_txt_dir, text_file)

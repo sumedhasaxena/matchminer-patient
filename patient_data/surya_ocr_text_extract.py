@@ -71,7 +71,7 @@ def sort_lines(lines, tolerance=10.0):
             sorted_text.append(line.text)
         sorted_text.append("\n")
 
-    return ' '.join(sorted_text).strip()
+    return ''.join(sorted_text).strip()
 
 def extract_text_with_surya(image_path: str) -> str:
     """
