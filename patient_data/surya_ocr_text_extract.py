@@ -65,12 +65,19 @@ def sort_lines(lines, tolerance=10.0):
 
     sorted_text = []
     for group in sorted(vertical_groups):
-        print(group)
-        group_lines = sorted(group[1:], key=lambda x:x.bbox[0])
-        for line in group_lines:
-            sorted_text.append(line.text)
+        # Sort text boxes on the same line by their horizontal position
+        group_lines = sorted(group[1:], key=lambda x: x.bbox[0])
+        
+        # Join the text from all boxes on this line with a space
+        full_line = ' '.join(line.text for line in group_lines)
+        
+        # Append the now correctly-spaced line to the list
+        sorted_text.append(full_line)
+        
+        # Add a newline character to separate this line from the next
         sorted_text.append("\n")
 
+    # Join all the complete lines together
     return ''.join(sorted_text).strip()
 
 def extract_text_with_surya(image_path: str) -> str:
@@ -112,13 +119,17 @@ def get_mock_response() -> str:
 
 def clean_html_tags(text: str) -> str:
     """
-    Remove HTML tags from text while preserving the content
+    Remove HTML tags from text while preserving the content and line breaks.
     """
     # Remove HTML tags using regex
-    clean_text = re.sub(r'<[^>]+>', '', text)
-    # Remove extra whitespace
-    clean_text = re.sub(r'\s+', ' ', clean_text)
-    return clean_text.strip()
+    no_html = re.sub(r'<[^>]+>', '', text)
+    
+    # Process each line to remove extra horizontal whitespace and preserve newlines
+    lines = no_html.split('\n')
+    cleaned_lines = [re.sub(r'[ \t]+', ' ', line).strip() for line in lines]
+    
+    # Join the cleaned lines back together, preserving the structure
+    return '\n'.join(cleaned_lines).strip()
 
 def decode_html_entities(text: str) -> str:
     """
