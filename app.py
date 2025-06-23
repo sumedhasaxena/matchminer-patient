@@ -27,38 +27,12 @@ from utils.diagnosis_rules import DIAGNOSIS_DROPDOWN_RULES
 from patient_data.patient_data_config import patient_schema_keys, get_clinical_fields, is_clinical_field
 from patient_data.get_patient_clinical_data import get_oncotree_diagnosis, get_additional_info
 
-# Configuration
-class Config:
-    """Application configuration constants"""
-    SECRET_KEY = 'your_secret_key'
-    HOST = '0.0.0.0'
-    PORT = 8890
-    DEBUG = True
-    
-    # Directory paths
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    IMAGE_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'images')
-    TEXT_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'clinical_data')
-    CLINICAL_JSON = os.path.join(BASE_DIR, 'patient_data', 'clinical_json')
-    GENOMIC_JSON = os.path.join(BASE_DIR, 'patient_data', 'genomic_json')
-    EXTRACTED_TEXT = os.path.join(BASE_DIR, 'patient_data', 'extracted_text')
-    LOGS_DIR = os.path.join(BASE_DIR, 'logs')
-    
-    # Script paths
-    CLINICAL_SCRIPT = os.path.join(BASE_DIR, 'patient_data', 'get_patient_clinical_data.py')
-    GENOMIC_SCRIPT = os.path.join(BASE_DIR, 'patient_data', 'get_patient_genomic_data.py')
-    
-    # Log files
-    CLINICAL_LOG = os.path.join(LOGS_DIR, 'get_patient_clinical_data.log')
-    GENOMIC_LOG = os.path.join(LOGS_DIR, 'get_patient_genomic_data.log')
-    APP_LOG = os.path.join(LOGS_DIR, 'app.log')
-    
-    # Sequence file
-    SEQUENCE_FILE = os.path.join(TEXT_FOLDER, '.sequence_counter.json')
+# Import the centralized Config class
+from config import Config
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = Config.SECRET_KEY
+app.config.from_object(Config)
 
 # Create necessary directories
 for directory in [Config.IMAGE_FOLDER, Config.TEXT_FOLDER, Config.CLINICAL_JSON, 
