@@ -327,40 +327,51 @@ class DiagnosisProcessor:
 
     @staticmethod
     def build_dynamic_dropdowns() -> List[Dict[str, Any]]:
-        """Build dynamic dropdowns from session data"""
+        """Build dynamic dropdowns from session data, preserving the order as defined in DIAGNOSIS_DROPDOWN_RULES"""
         dynamic_dropdowns = []
         
-        for session_key, session_value in session.items():
-            if session_key in patient_schema_keys:
-                for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
-                    # Safely check if 'dropdowns' key exists
-                    if 'dropdowns' in rule:
-                        for dropdown in rule['dropdowns']:
-                            if dropdown['name'] == session_key:
-                                dynamic_dropdowns.append({
-                                    'name': session_key,
-                                    'label': dropdown['label'],
-                                    'options': dropdown['values'],
-                                    'selected': session_value
-                                })
+        # Create a mapping of session keys to their values for quick lookup
+        session_data = {key: value for key, value in session.items() if key in patient_schema_keys}
+        
+        # Iterate through DIAGNOSIS_DROPDOWN_RULES to preserve the defined order
+        for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
+            # Safely check if 'dropdowns' key exists
+            if 'dropdowns' in rule:
+                for dropdown in rule['dropdowns']:
+                    dropdown_name = dropdown['name']
+                    # Only add if this dropdown has a value in session
+                    if dropdown_name in session_data:
+                        dynamic_dropdowns.append({
+                            'name': dropdown_name,
+                            'label': dropdown['label'],
+                            'options': dropdown['values'],
+                            'selected': session_data[dropdown_name]
+                        })
+        
         return dynamic_dropdowns
     
+    @staticmethod
     def build_dynamic_texts() -> List[Dict[str, Any]]:
-        """Build dynamic textbox items from session data"""
+        """Build dynamic textbox items from session data, preserving the order as defined in DIAGNOSIS_DROPDOWN_RULES"""
         dynamic_texts = []
         
-        for session_key, session_value in session.items():
-            if session_key in patient_schema_keys:
-                for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
-                    # Safely check if 'texts' key exists
-                    if 'texts' in rule:
-                        for text in rule['texts']:
-                            if text['name'] == session_key:
-                                dynamic_texts.append({
-                                    'name': session_key,
-                                    'label': text['label'],
-                                    'value': session_value
-                                })
+        # Create a mapping of session keys to their values for quick lookup
+        session_data = {key: value for key, value in session.items() if key in patient_schema_keys}
+        
+        # Iterate through DIAGNOSIS_DROPDOWN_RULES to preserve the defined order
+        for diagnosis, rule in DIAGNOSIS_DROPDOWN_RULES.items():
+            # Safely check if 'texts' key exists
+            if 'texts' in rule:
+                for text in rule['texts']:
+                    text_name = text['name']
+                    # Only add if this text field has a value in session
+                    if text_name in session_data:
+                        dynamic_texts.append({
+                            'name': text_name,
+                            'label': text['label'],
+                            'value': session_data[text_name]
+                        })
+        
         return dynamic_texts
 
 # Route handlers
