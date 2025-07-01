@@ -1,6 +1,6 @@
 Flask>=2.0
 Werkzeug>=2.0
-loguru 
+loguru
 requests
 biopython
 pandas
@@ -9,3 +9,4 @@ torchvision
 torchaudio
 pillow==10.4.0
 surya-ocr==0.14.6
+gunicorn
