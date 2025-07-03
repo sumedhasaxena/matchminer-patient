@@ -26,7 +26,7 @@ init_conda
 # Activate the conda environment
 conda activate matchminer_patient
 
-# Set environment variables if you are using a .env file
+# Set environment variables using a .env file
 export $(cat .env | xargs)
 
 # Create the run directory if it doesn't exist

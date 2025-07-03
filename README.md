@@ -51,7 +51,7 @@ To get started with development, you'll need to set up an isolated Python enviro
 
     a. **Create the Conda environment:**
     ```bash
-    conda create --name matchminer-env python=3.9
+    conda create --name matchminer-env python=3.12
     ```
     *(You can replace `matchminer-env` with your preferred environment name.)*
 
@@ -152,7 +152,14 @@ To deploy this application to a production Linux server, we recommend using a co
     sudo systemctl status matchminer-patient.service
     ```
 
-### **C. Configure Nginx:**
+### **C. Install Nginx:**
+If nginx is not already installed on your server, install it with:
+```bash
+sudo apt update
+sudo apt install nginx
+```
+
+### **D. Configure Nginx:**
 
 1.  **Copy the Nginx Config:**
     ```bash
@@ -175,3 +182,28 @@ To deploy this application to a production Linux server, we recommend using a co
     ```
 
 Your application should now be live and served by Nginx. Remember to also configure your firewall (`ufw`) to allow traffic on port 80 (HTTP) and 443 (HTTPS if you add SSL).
+
+---
+
+## 6. Troubleshooting & Additional Setup
+
+### A. Permissions for Home Directory
+If your project (and the Gunicorn socket or static files) are inside your home directory, nginx (which runs as the `www-data` user) must be able to traverse your home directory. Set the execute permission for others:
+```bash
+chmod o+x /home/<your-username>
+```
+Replace `<your-username>` with your actual username
+
+### B. Permissions for Static Files and Folders
+Nginx must be able to read and traverse the static files and all parent directories. Set the following permissions:
+```bash
+chmod o+rx /home/<your-username>/matchminer-patient/static
+chmod o+rx /home/<your-username>/matchminer-patient/static/images
+chmod o+r /home/<your-username>/matchminer-patient/static/images/matchminer_hkumed_logo.png
+```
+Repeat the last command for any other static files you want to serve.
+
+### C. Common Errors
+- **502 Bad Gateway:** Usually means nginx cannot connect to Gunicorn. Check that Gunicorn is running, the socket path matches, and permissions are correct.
+- **403 Forbidden on static files:** Means nginx cannot read the file or directory. Check and set the permissions as above.
+- **nginx config not loading:** Make sure your config is in `/etc/nginx/sites-available/` and symlinked to `/etc/nginx/sites-enabled/`, and that `/etc/nginx/nginx.conf` includes the line `include /etc/nginx/sites-enabled/*;`.

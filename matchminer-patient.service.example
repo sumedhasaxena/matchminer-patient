@@ -1,0 +1,30 @@
+[Unit]
+Description=Gunicorn instance for Matchminer Patient App
+After=network.target
+
+[Service]
+# User and group to run the service
+User=your_linux_user
+Group=your_linux_group
+
+# Set the working directory
+WorkingDirectory=/path/to/your/matchminer-patient
+
+# Command to start the Gunicorn server
+# Make sure the gunicorn_start.sh script is executable (chmod +x gunicorn_start.sh)
+ExecStart=/path/to/your/matchminer-patient/gunicorn_start.sh
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Standard output and error logging
+StandardOutput=journal
+StandardError=journal
+
+# Make sure this is set to 'forking' if your start script daemonizes the process,
+# but 'simple' is correct for our exec script.
+Type=simple
+
+[Install]
+WantedBy=multi-user.target 

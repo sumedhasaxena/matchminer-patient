@@ -1,0 +1,24 @@
+server {
+    listen 8900;
+    server_name _;
+
+    # Set client body size to handle large file uploads if necessary
+    client_max_body_size 100M;
+
+    # Path for static files
+    location /static {
+        alias /path/to/your/matchminer-patient/static;
+        expires 30d;
+        add_header Cache-Control "public";
+    }
+
+    # Main location block to proxy requests to Gunicorn
+    location / {
+        proxy_pass http://unix:/path/to/your/matchminer-patient/gunicorn.sock;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+    }
+} 
