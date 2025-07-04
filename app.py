@@ -244,6 +244,8 @@ class DataProcessor:
             
         return image_filenames, None
 
+
+
     @staticmethod
     def delete_uploaded_images(image_paths: List[str], unique_id: str) -> None:
         """Delete uploaded images after OCR extraction is completed"""
@@ -474,9 +476,22 @@ def index():
     """Main form submission and display endpoint"""
     if request.method == 'POST':
         try:
-            # Generate unique ID
-            unique_id = SequenceManager.generate_unique_id()
-            logger.info(f"Generated unique ID for new submission: {unique_id}")
+            # Check if user is coming back from review page
+            from_review = request.args.get('from_review') == '1'
+            
+            # If coming back from review, preserve the original unique_id from session
+            if from_review:
+                session_form_data = session.get('form_data', {})
+                unique_id = session_form_data.get('unique_id')
+                if unique_id:
+                    logger.info(f"Preserving existing unique ID from session: {unique_id}")
+                else:
+                    unique_id = SequenceManager.generate_unique_id()
+                    logger.info(f"No existing unique ID found, generated new one: {unique_id}")
+            else:
+                # Generate new unique ID for fresh submission
+                unique_id = SequenceManager.generate_unique_id()
+                logger.info(f"Generated unique ID for new submission: {unique_id}")
             
             # Get form data
             form_data = request.form.to_dict()
@@ -489,17 +504,27 @@ def index():
 
             # Process uploaded images
             image_files = request.files.getlist('genomic_images')
-            try:
-                image_filenames, extracted_text = DataProcessor.process_uploaded_images(unique_id, image_files)
-                logger.info(f"{unique_id} | Processed {len(image_filenames)} images ")
-            except Exception as e:
-                logger.exception(f"Error processing images for {unique_id}: {str(e)}")
-                raise
             
-            # Store extracted text in session if available
-            if extracted_text:
-                session['extracted_text'] = extracted_text
-                logger.info(f"{unique_id} | OCR extracted text :  Added to session -> key 'extracted_text', value : {{extracted_text}}")
+            # Check if any new images were uploaded
+            has_new_images = image_files and any(f.filename for f in image_files)
+            
+            if has_new_images:
+                try:
+                    image_filenames, extracted_text = DataProcessor.process_uploaded_images(unique_id, image_files)
+                    logger.info(f"{unique_id} | Processed {len(image_filenames)} images ")
+                    
+                    # Store extracted text in session if available
+                    if extracted_text:
+                        session['extracted_text'] = extracted_text
+                        logger.info(f"{unique_id} | OCR extracted text :  Added to session -> key 'extracted_text', value : {{extracted_text}}")
+                except Exception as e:
+                    logger.exception(f"Error processing images for {unique_id}: {str(e)}")
+                    raise
+            else:
+                # No new images uploaded, preserve existing data from session
+                session_form_data = session.get('form_data', {})
+                image_filenames = session_form_data.get('genomic_images', [])
+                logger.info(f"{unique_id} | No new images uploaded, preserving existing {len(image_filenames)} images from session")
 
             # Get diagnosis result
             if diagnosis_free_text:
@@ -642,6 +667,8 @@ def index():
     diagnosis_result = session.get('diagnosis_result', {})
     free_text_diagnosis = session.get('free_text_diagnosis', '')
     extracted_text = session.get('extracted_text', '')
+    
+
     
     # Prepare level2 and level3 lists for dropdown population
     selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
