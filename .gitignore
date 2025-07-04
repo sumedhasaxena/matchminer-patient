@@ -10,3 +10,4 @@ patient_data/__pycache__/*
 logs/*
 *.pyc
 
+gunicorn_start.sh
