@@ -9,8 +9,8 @@ import argparse
 from datetime import datetime
 from loguru import logger
 from patient_data.patient_data_config import patient_schema_keys, get_clinical_fields, is_clinical_field
-# Set up Loguru to log to a file (e.g., logs/app.log)
-logger.add("logs/app.log", rotation="10 MB", retention="10 days", enqueue=True)
+# Set up Loguru to log to its own file (as this can also be run as a standalone script)
+logger.add("logs/get_patient_clinical_data.log", rotation="10 MB", retention="10 days", enqueue=True)
 
 clinical_txt_dir = 'clinical_data'
 clinical_json_dir = 'clinical_json'
