@@ -386,6 +386,32 @@ def debug_oncotree():
         'mapping_l2_l3': level2_to_level3
     })
 
+@app.route('/api/oncotree-data')
+def get_oncotree_data():
+    """API endpoint to get OncoTree data for client-side autocomplete"""
+    # Prepare data for client-side autocomplete
+    autocomplete_data = []
+    
+    # Add level2 items with their parent level1
+    for level1, level2_list in level1_to_level2.items():
+        for level2 in level2_list:
+            autocomplete_data.append({
+                'parent': level1,
+                'type': 'level2',
+                'value': level2
+            })
+    
+    # Add level3 items with their parent level2
+    for level2, level3_list in level2_to_level3.items():
+        for level3 in level3_list:
+            autocomplete_data.append({
+                'parent': level2,
+                'type': 'level3',
+                'value': level3
+            })
+    
+    return jsonify(autocomplete_data)
+
 @app.route('/get_level2/<path:level1>')
 def get_level2(level1: str):
     """API endpoint to get level2 values for a given level1"""
@@ -399,45 +425,6 @@ def get_level3(level2: str):
     level2 = unquote(level2)
     logger.debug(f"Received request for level2: {level2}")
     return jsonify(level2_to_level3.get(level2, []))
-
-@app.route('/diagnosis_autocomplete')
-def diagnosis_autocomplete():
-    """API endpoint to get auto-complete suggestions for diagnosis field"""
-    query = request.args.get('q', '').lower().strip()
-    if not query:
-        return jsonify([])
-    
-    suggestions = []
-    
-    # Search in level2 using level1_to_level2 to get ALL level2 items
-    for level1, level2_list in level1_to_level2.items():
-        for level2 in level2_list:
-            if query in level2.lower():
-                suggestions.append({
-                    'parent': level1,
-                    'type': 'level2',
-                    'value': f"{level2}"
-                })
-    
-    # Search in level3 using level2_to_level3
-    for level2, level3_list in level2_to_level3.items():
-        for level3 in level3_list:
-            if query in level3.lower():
-                suggestions.append({
-                    'parent': level2,
-                    'type': 'level3',
-                    'value': f"{level3}"
-                })
-    
-    # Remove duplicates and limit results
-    unique_suggestions = []
-    seen_values = set()
-    for suggestion in suggestions[:10]:  # Limit to 10 suggestions
-        if suggestion['value'] not in seen_values:
-            unique_suggestions.append(suggestion)
-            seen_values.add(suggestion['value'])
-    
-    return jsonify(unique_suggestions)
 
 @app.route('/get_additional_diagnosis_dropdowns/<path:diagnosis>')
 def get_additional_diagnosis_dropdowns(diagnosis: str):

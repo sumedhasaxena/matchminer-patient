@@ -751,6 +751,18 @@
             let autocompleteTimeout;
             let selectedIndex = -1;
             let suggestions = [];
+            let oncotreeData = []; // Store OncoTree data for client-side search
+
+            // Load OncoTree data once when page loads
+            async function loadOncotreeData() {
+                try {
+                    const response = await fetch('/api/oncotree-data');
+                    oncotreeData = await response.json();
+                    console.log('OncoTree data loaded:', oncotreeData.length, 'items');
+                } catch (error) {
+                    console.error('Error loading OncoTree data:', error);
+                }
+            }
 
             function initAutocomplete() {
                 const input = document.getElementById('diagnosis_free_text');
@@ -806,17 +818,25 @@
             }
 
             function searchSuggestions(query) {
-                fetch(`/diagnosis_autocomplete?q=${encodeURIComponent(query)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        suggestions = data;
-                        selectedIndex = -1;
-                        displaySuggestions(data);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching suggestions:', error);
-                        hideSuggestions();
-                    });
+                // Client-side search using loaded OncoTree data
+                const queryLower = query.toLowerCase();
+                const filteredSuggestions = oncotreeData.filter(item => 
+                    item.value.toLowerCase().includes(queryLower)
+                );
+                
+                // Remove duplicates and limit results
+                const uniqueSuggestions = [];
+                const seenValues = new Set();
+                for (const suggestion of filteredSuggestions.slice(0, 10)) {
+                    if (!seenValues.has(suggestion.value)) {
+                        uniqueSuggestions.push(suggestion);
+                        seenValues.add(suggestion.value);
+                    }
+                }
+                
+                suggestions = uniqueSuggestions;
+                selectedIndex = -1;
+                displaySuggestions(uniqueSuggestions);
             }
 
             function displaySuggestions(suggestions) {
@@ -1199,7 +1219,10 @@
             }
 
            // Initialize form fields on page load
-           document.addEventListener('DOMContentLoaded', function() {
+           document.addEventListener('DOMContentLoaded', async function() {
+               // Load OncoTree data for client-side autocomplete
+               await loadOncotreeData();
+               
                // Only update diagnosis dropdowns if there's no existing diagnosis data
                const level1Select = document.getElementById('diagnosis_level1');
                const level2Select = document.getElementById('diagnosis_level2');
