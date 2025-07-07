@@ -74,22 +74,39 @@ def main(text_file: str):
     # read OCR extracted content
     OCR_TXT_FILE_PATH = os.path.join(current_dir, extracted_text_dir, text_file)
     logger.info(f'Looking for file in {OCR_TXT_FILE_PATH}')
-    with open(OCR_TXT_FILE_PATH, 'r') as file:
-        ocr_content = file.read()        
-        modified_lines = get_and_append_gene_from_census(ocr_content)
-        combined_content += modified_lines
-        combined_content += "\n"
+    
+    if os.path.exists(OCR_TXT_FILE_PATH):
+        with open(OCR_TXT_FILE_PATH, 'r') as file:
+            ocr_content = file.read()        
+            modified_lines = get_and_append_gene_from_census(ocr_content)
+            combined_content += modified_lines
+            combined_content += "\n"
+        logger.info(f'Successfully read OCR content from {OCR_TXT_FILE_PATH}')
+    else:
+        logger.warning(f'OCR extracted text file not found: {OCR_TXT_FILE_PATH}')
+        # Continue without OCR content - the script will still process clinical data
 
     # read clinical data
     CLINICAL_TXT_FILE_PATH = os.path.join(current_dir, clinical_txt_dir, text_file)
     logger.info(f'Looking for file in {CLINICAL_TXT_FILE_PATH}')
-    with open(CLINICAL_TXT_FILE_PATH, 'r') as file:
-        clinical_content = file.read()
-        combined_content += clinical_content
     
-    logger.info(f"Combined content for {text_file}: {combined_content}")
-        
-    response = get_patent_genomic_data(combined_content, text_file)
+    if os.path.exists(CLINICAL_TXT_FILE_PATH):
+        with open(CLINICAL_TXT_FILE_PATH, 'r') as file:
+            clinical_content = file.read()
+            combined_content += clinical_content
+        logger.info(f'Successfully read clinical content from {CLINICAL_TXT_FILE_PATH}')
+    else:
+        logger.warning(f'Clinical data file not found: {CLINICAL_TXT_FILE_PATH}')
+        # Continue without clinical content - the script will still process OCR data if available
+    
+    # Check if any content was found
+    if not combined_content.strip():
+        logger.warning(f'No content found for {text_file} - both OCR and clinical files were missing')
+        # Create empty response since no data was found
+        response = []
+    else:
+        logger.info(f"Combined content for {text_file}: {combined_content}")
+        response = get_patent_genomic_data(combined_content, text_file)
     output_file = os.path.join(current_dir, genomic_json_dir, f'{os.path.splitext(text_file)[0]}.json')
     with open(output_file, "w") as json_file: 
         json.dump(response, json_file)

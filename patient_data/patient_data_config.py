@@ -30,6 +30,7 @@ patient_schema_keys = {
 }
 
 # Categorization of fields as clinical vs genomic
+# This decides which fields go into patient's clinical json and which go to genomic json
 field_categories = {
     "clinical": [
         "birth_date_key", "first_name_key", "gender_key", "last_name_key", "mrn_key",
@@ -37,10 +38,10 @@ field_categories = {
         "pathologist_name_key", "physician_email_key", "report_date_key", 
         "report_version_key", "sample_id_key", "test_name_key", "vital_status_key",
         "mgmt_promotor_status_key", "pdl1_status_key", "her2_status_key", 
-        "pr_status_key", "er_status_key", "tmb_key"
+        "pr_status_key", "er_status_key", "tmb_key", "mmr_status_key"
     ],
     "genomic": [
-        "mmr_status_key", "idh_wildtype_key"
+        "idh_wildtype_key"
     ]
 }
 
