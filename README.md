@@ -142,7 +142,7 @@ sudo apt install nginx
 
 1.  **Copy the Nginx Config:**
     ```bash
-    sudo cp nginx.conf /etc/nginx/sites-available/matchminer-patient
+    sudo cp nginx.conf.example /etc/nginx/sites-available/matchminer-patient
     ```
 2.  **Edit the Config:**
     ```bash
@@ -168,7 +168,7 @@ sudo apt install nginx
     ```
 2.  **Verify Setup:** The application should now be live and accessible through your configured domain or IP address.
 
-Remember to also configure your firewall (`ufw`) to allow traffic on port 80 (HTTP) and 443 (HTTPS if you add SSL).
+Remember to also configure your firewall (`ufw`) to allow traffic on port specified in nginx.conf.
 
 ---
 
