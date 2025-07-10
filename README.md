@@ -76,7 +76,7 @@ pip install -r requirements.txt
 
 ---
 
-## 3. Running the Application
+## 3. Running the Application locally
 
 Once the setup is complete and the dependencies are installed, you can run the Flask web application locally.
 
@@ -105,9 +105,9 @@ The application is designed around a simple, user-centric workflow:
 
 ## 5. Deployment (Production on Linux)
 
-To deploy this application to a production Linux server, we recommend using a combination of **Gunicorn**, **Nginx**, and **Systemd**.
+To deploy this application to a production Linux server, we recommend using a combination of **Gunicorn** and **Nginx**.
 
-### **A. On Your Server:**
+### **A. Setup Instructions:**
 
 1.  **Clone the Repository:**
     ```bash
@@ -125,41 +125,20 @@ To deploy this application to a production Linux server, we recommend using a co
     nano .env  # Edit the file to set your SECRET_KEY, etc.
     ```
 5.  **Configure `gunicorn_start.sh`:**
+    *   Copy the example file: `cp gunicorn_start.example.sh gunicorn_start.sh`
     *   Edit the `gunicorn_start.sh` script.
     *   Set `FLASKDIR` to the absolute path of your project (e.g., `/home/user/matchminer-patient`).
     *   Set `USER` and `GROUP` to the Linux user you want the app to run as.
     *   Make the script executable: `chmod +x gunicorn_start.sh`.
 
-### **B. Configure Systemd Service:**
-
-1.  **Copy the Service File:**
-    ```bash
-    sudo cp matchminer-patient.service /etc/systemd/system/matchminer-patient.service
-    ```
-2.  **Edit the Service File:**
-    ```bash
-    sudo nano /etc/systemd/system/matchminer-patient.service
-    ```
-    *   Update the `User`, `Group`, `WorkingDirectory`, and `ExecStart` paths to match your server setup.
-3.  **Reload and Enable the Service:**
-    ```bash
-    sudo systemctl daemon-reload
-    sudo systemctl start matchminer-patient.service
-    sudo systemctl enable matchminer-patient.service # To start on boot
-    ```
-4.  **Check Status:**
-    ```bash
-    sudo systemctl status matchminer-patient.service
-    ```
-
-### **C. Install Nginx:**
+### **B. Install Nginx:**
 If nginx is not already installed on your server, install it with:
 ```bash
 sudo apt update
 sudo apt install nginx
 ```
 
-### **D. Configure Nginx:**
+### **C. Configure Nginx:**
 
 1.  **Copy the Nginx Config:**
     ```bash
@@ -181,7 +160,15 @@ sudo apt install nginx
     sudo systemctl restart nginx
     ```
 
-Your application should now be live and served by Nginx. Remember to also configure your firewall (`ufw`) to allow traffic on port 80 (HTTP) and 443 (HTTPS if you add SSL).
+### **D. Run the Application:**
+
+1.  **Run the Application:**
+    ```bash
+    ./gunicorn_start.sh
+    ```
+2.  **Verify Setup:** The application should now be live and accessible through your configured domain or IP address.
+
+Remember to also configure your firewall (`ufw`) to allow traffic on port 80 (HTTP) and 443 (HTTPS if you add SSL).
 
 ---
 
