@@ -23,7 +23,8 @@ mm_patient_to_xml_tag_map = {
     "GENDER": "Gender",
     "LAST_NAME": "LastName",
     "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "SubmittedDiagnosis",
-    "PATHOLOGIST_NAME": "Pathologist"  
+    "PATHOLOGIST_NAME": "Pathologist",
+    "REPORT_DATE": "ReceivedDate"
 }
 
 mm_patient_biomarkers_to_xml_tag_map = {
@@ -51,7 +52,6 @@ def supplement_mandatory_clinical_fields(patient_data: Dict[str, Any]) -> Dict[s
     patient_data["REPORT_VERSION"] = "0"
     patient_data["VITAL_STATUS"] = "alive"
     patient_data["TEST_NAME"] = "oncopanel"
-    patient_data["REPORT_DATE"] = "NA"
     return patient_data
 
 def extract_variants_from_xml(root: etree.Element) -> list:
@@ -64,8 +64,7 @@ def extract_variants_from_xml(root: etree.Element) -> list:
 
         functional_effect = variant.get('functional-effect')
         cds_effect = variant.get('cds-effect')
-        variant_classification = map_to_variant_category(functional_effect, cds_effect)
-        print(f'gene: {gene}, variant_classification: {variant_classification}')
+        variant_classification = map_variant_category(functional_effect, cds_effect)
 
         entry = {
             "WILDTYPE": False,
@@ -80,7 +79,50 @@ def extract_variants_from_xml(root: etree.Element) -> list:
 
     return variants
 
-def map_to_variant_category(functional_effect: str, cds_effect:str) -> str:
+def extract_cnvs_from_xml(root: etree.Element) -> list:
+    cnvs = []
+
+    for cnv in root.xpath('//variant:copy-number-alteration', namespaces=NAMESPACES):
+        gene = cnv.get('gene')        
+        cnv_type = cnv.get('type')
+        copy_number_str = cnv.get('copy-number')
+
+        try:
+            copy_number = int(copy_number_str) if copy_number_str else None
+        except ValueError:
+            copy_number = None
+
+        cnv_call = map_cnv_call(cnv_type, copy_number) if cnv_type and copy_number is not None else None
+
+        entry = {
+            "WILDTYPE": False,
+            "TRUE_HUGO_SYMBOL": gene,
+            "VARIANT_CATEGORY": "CNV",
+        }
+
+        if cnv_call:
+            entry["CNV_CALL"] = cnv_call
+
+        cnvs.append(entry)
+
+    return cnvs
+
+def extract_rearrangements_from_xml(root: etree.Element) -> list:
+    svs = []
+
+    for sv in root.xpath('//variant:rearrangement ', namespaces=NAMESPACES):
+        gene = sv.get('targeted-gene')        
+        
+        entry = {
+            "WILDTYPE": False,
+            "TRUE_HUGO_SYMBOL": gene,
+            "VARIANT_CATEGORY": "SV",
+        }
+        svs.append(entry)
+
+    return svs
+
+def map_variant_category(functional_effect: str, cds_effect:str) -> str:
     map = {'missense':'Missense_Mutation',
            'nonsense':'Nonsense_Mutation'}
     
@@ -100,7 +142,29 @@ def map_to_variant_category(functional_effect: str, cds_effect:str) -> str:
         elif 'ins' in cds_effect.lower():
             effect = 'In_Frame_Ins'       
     
-    return effect    
+    return effect 
+
+def map_cnv_call(cnv_type: str, copy_number:str) -> Optional[str]:
+    # matchminer cnv calls
+    # "High level amplification"
+    # "Homozygous deletion"
+    # 'Gain'
+    # 'Heterozygous deletion'
+    
+    if cnv_type == "amplification":
+        if copy_number >= 7 :
+            return "High level amplification"
+        elif copy_number > 2 and copy_number < 7:
+            return "Gain"
+    elif cnv_type == "partial amplification":
+        return "Gain"
+    elif cnv_type == "loss":
+        if copy_number == 0:
+            return "Homozygous deletion"
+        elif copy_number == 1:
+            return "Heterozygous deletion"    
+    
+    return None
 
 def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
     
@@ -110,12 +174,11 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
         
         pmi_data = {
             "DOB": root.xpath('//PMI/DOB/text()'),
-            "FirstName": root.xpath('//PMI/FirstName/text()'),
             "Gender": root.xpath('//PMI/Gender/text()'),
-            "LastName": root.xpath('//PMI/LastName/text()'),
             "SubmittedDiagnosis": root.xpath('//PMI/SubmittedDiagnosis/text()'),
             "Pathologist": root.xpath('//PMI/Pathologist/text()'),
-            "CopiedPhysician1": root.xpath('//PMI/CopiedPhysician1/text()')
+            "CopiedPhysician1": root.xpath('//PMI/CopiedPhysician1/text()'),
+            "ReceivedDate": root.xpath('//PMI/ReceivedDate/text()')
         }           
         
         # Map patient data
@@ -126,6 +189,16 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
                 oncotree_diagnosis = get_oncotree_diagnosis(id, free_text_diagnosis)
                 patient_data[mm_key] = oncotree_diagnosis
                 patient_data["ONCOTREE_PRIMARY_DIAGNOSIS"] = oncotree_diagnosis
+
+            elif mm_key == "REPORT_DATE":
+                values = pmi_data.get(xml_tag, [])
+                if values and values[0]:
+                    try:
+                        date_obj = datetime.strptime(values[0].strip(), "%Y-%m-%d")
+                        patient_data[mm_key] = date_obj.strftime("%a, %d %b %Y 10:00:00 GMT")
+                    except ValueError:
+                        patient_data[mm_key] = values[0].strip()
+
             else:
                 values = pmi_data.get(xml_tag, [])
                 if values and values[0]:
@@ -134,7 +207,7 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
                         try:
                             year = int(values[0].strip())
                             birth_date = datetime(year, 1, 1)
-                            patient_data[mm_key] = birth_date.strftime("%Y-%m-%d")
+                            patient_data[mm_key] = birth_date.strftime("%a, %d %b %Y 10:00:00 GMT")
                         except ValueError:
                             patient_data[mm_key] = values[0].strip()
                     else:
@@ -162,7 +235,11 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
 
         # Extract variants for genomic data
         variants = extract_variants_from_xml(root)
-        
+        cnv = extract_cnvs_from_xml(root)
+        variants.extend(cnv)
+        svs = extract_rearrangements_from_xml(root)
+        variants.extend(svs)
+
         return {
             "clinical_data": patient_data,
             "genomic_data": variants
