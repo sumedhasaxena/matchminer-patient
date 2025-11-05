@@ -109,7 +109,7 @@ Each JSON object may contain following fields:
 3. TRUE_VARIANT_CLASSIFICATION: If the 'VARIANT_CATEGORY' = 'MUTATION', the value should be one of the following values: ['In_Frame_Del', 'In_Frame_Ins', 'Missense_Mutation', 'Nonsense_Mutation', 'Nonstop_Mutation', 'Frame_Shift_Del','Frame_Shift_Ins','Initiator_Codon', 'Intron', 'RNA', 'Silent', 'Splice_Acceptor', 'Splice_Donor', 'Splice_Region','Splice_Site', 'Splice_Lost', 'Translation_Start_Site', "3'UTR", "5'Flank", "5'UTR"]. Otherwise, exclude this field.
 4. TRUE_PROTEIN_CHANGE: Protein change if described in the report. Example: "p.R146*". If the variant is a fusion, don't add this field.
 5. CNV_CALL: If the 'VARIANT_CATEGORY' = 'CNV', the value for this field should be one of the following values: ["High level amplification", "Homozygous deletion", "Gain", "Heterozygous deletion"].Otherwise, exclude this field.
-6. If the instructions mention IDH wildtype, add a section with 'TRUE_HUGO_SYMBOL' as IDH, and 'WILDTYPE' as true/false.
+6. If the instructions mentions wildtype for 'IDH' gene, add 2 sections with 'TRUE_HUGO_SYMBOL' as IDH1 and IDH2, and 'WILDTYPE' as true/false.
 
 Example:
 FLCN H429fs*39 NM_144997.5: c.128Sdel(p.H429Tfs*39), 1285delC
@@ -137,7 +137,11 @@ Output:
 }},
 {{
     "WILDTYPE": true,
-    "TRUE_HUGO_SYMBOL": "IDH",
+    "TRUE_HUGO_SYMBOL": "IDH1",
+}},
+{{
+    "WILDTYPE": true,
+    "TRUE_HUGO_SYMBOL": "IDH2",
 }}]]
 """
     
