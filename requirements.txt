@@ -10,3 +10,4 @@ torchaudio
 pillow==10.4.0
 surya-ocr==0.14.6
 gunicorn
+lxml>=4.9.0
