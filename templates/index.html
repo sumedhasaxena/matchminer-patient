@@ -10,6 +10,22 @@
             margin: 0;
             padding: 0;
         }
+        .paste-zone {
+            max-width: 300px;
+            margin-top: 10px;
+            padding: 16px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 6px;
+            color: #4a5568;
+            background-color: #f7fafc;
+            text-align: center;
+            cursor: text;
+        }
+        .paste-zone:focus {
+            outline: none;
+            border-color: #2b6cb0;
+            background-color: #ebf8ff;
+        }
         .banner {
             background-color: #ffffff;
             padding: 15px 40px;
@@ -190,6 +206,22 @@
         }
         .file-upload-btn:hover {
             background-color: #2d3748;
+        }
+        .dropzone {
+            max-width: 300px;
+            margin-top: 10px;
+            padding: 20px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 6px;
+            color: #4a5568;
+            background-color: #f7fafc;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .dropzone.hover {
+            border-color: #2b6cb0;
+            background-color: #ebf8ff;
         }
         .submit-btn {
             background-color: #2b6cb0;
@@ -706,8 +738,11 @@
                     <tr>
                         <td><label for="genomic_images">Upload Genomic Data Images:</label></td>
                         <td>
-                            <label for="genomic_images" class="file-upload-btn">Choose Files</label>
-                            <input type="file" id="genomic_images" name="genomic_images" accept="image/*" multiple onchange="updateFileList(this)">
+                            <input type="file" id="genomic_images" name="genomic_images" accept="image/*" multiple>
+                            <div id="genomic_dropzone" class="dropzone" tabindex="0" role="button" aria-label="Upload or paste genomic images">
+                                <div style="font-weight: 600;">Upload a File</div>
+                                <div style="font-size: 12px; color: #718096;">Click, drag-and-drop, or paste here</div>
+                            </div>
                             <div id="fileList" class="file-list">
                                 {% if form_data and form_data.genomic_images %}
                                     {% for file in form_data.genomic_images %}
@@ -752,6 +787,7 @@
             let selectedIndex = -1;
             let suggestions = [];
             let oncotreeData = []; // Store OncoTree data for client-side search
+            let genomicFilesBeforePicker = [];
 
             // Load OncoTree data once when page loads
             async function loadOncotreeData() {
@@ -1112,6 +1148,154 @@
                 }
             }
 
+            function fileKey(file) {
+                return [file.name, file.size, file.type || '', file.lastModified || 0].join('::');
+            }
+
+            function addFilesToGenomicInput(newFiles) {
+                const input = document.getElementById('genomic_images');
+                const dt = new DataTransfer();
+                // Preserve existing files
+                if (input.files && input.files.length > 0) {
+                    Array.from(input.files).forEach(f => dt.items.add(f));
+                }
+                // Append new files
+                const existingKeys = new Set(Array.from(dt.files).map(fileKey));
+                newFiles.forEach(f => {
+                    const key = fileKey(f);
+                    if (!existingKeys.has(key)) {
+                        dt.items.add(f);
+                        existingKeys.add(key);
+                    }
+                });
+                input.files = dt.files;
+                updateFileList(input);
+            }
+
+            function setupGenomicDropArea() {
+                const dropzone = document.getElementById('genomic_dropzone');
+                const input = document.getElementById('genomic_images');
+                if (!dropzone || !input) return;
+
+                // Click to open file dialog (snapshot existing first for merge)
+                dropzone.addEventListener('click', function() {
+                    genomicFilesBeforePicker = Array.from(input.files);
+                    input.click();
+                });
+                // Keyboard accessibility
+                dropzone.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        genomicFilesBeforePicker = Array.from(input.files);
+                        input.click();
+                    }
+                });
+
+                // Merge newly selected files with existing on change
+                input.addEventListener('change', function() {
+                    if (input.files && input.files.length > 0) {
+                        const newSelection = Array.from(input.files);
+                        const dt = new DataTransfer();
+                        const seen = new Set();
+                        // First add previously existing files (snapshot)
+                        genomicFilesBeforePicker.forEach(f => {
+                            const k = fileKey(f);
+                            if (!seen.has(k)) { dt.items.add(f); seen.add(k); }
+                        });
+                        // Then add new selection
+                        newSelection.forEach(f => {
+                            const k = fileKey(f);
+                            if (!seen.has(k)) { dt.items.add(f); seen.add(k); }
+                        });
+                        input.files = dt.files;
+                        updateFileList(input);
+                    } else {
+                        updateFileList(input);
+                    }
+                    genomicFilesBeforePicker = [];
+                });
+
+                // Drag and drop
+                ['dragenter', 'dragover'].forEach(evt => {
+                    dropzone.addEventListener(evt, function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropzone.classList.add('hover');
+                    });
+                });
+                ['dragleave', 'drop'].forEach(evt => {
+                    dropzone.addEventListener(evt, function(e) {
+                        dropzone.classList.remove('hover');
+                    });
+                });
+                dropzone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const dt = e.dataTransfer;
+                    if (!dt) return;
+                    const files = dt.files ? Array.from(dt.files) : [];
+                    const imageFiles = files.filter(f => f.type && f.type.indexOf('image') === 0);
+                    if (imageFiles.length > 0) {
+                        addFilesToGenomicInput(imageFiles);
+                    }
+                });
+
+                // Paste handler function
+                function handlePaste(e) {
+                    const cd = e.clipboardData || window.clipboardData;
+                    if (!cd) return;
+                    const items = cd.items || [];
+                    const filesToAdd = [];
+                    
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        if (item && item.type && item.type.indexOf('image') !== -1) {
+                            const blob = item.getAsFile();
+                            if (blob) {
+                                const extension = blob.type && blob.type.includes('jpeg') ? 'jpg' : (blob.type.split('/')[1] || 'png');
+                                const safeTs = new Date().toISOString().replace(/[:.]/g, '-');
+                                const fileName = `pasted-${safeTs}.${extension}`;
+                                try {
+                                    const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+                                    filesToAdd.push(file);
+                                } catch (err) {
+                                    blob.name = fileName;
+                                    filesToAdd.push(blob);
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (filesToAdd.length > 0) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        addFilesToGenomicInput(filesToAdd);
+                        return true;
+                    }
+                    return false;
+                }
+
+                // Paste support: on dropzone when focused
+                dropzone.addEventListener('paste', handlePaste);
+                
+                // Also listen for paste events globally when user is not in a text input
+                document.addEventListener('paste', function(e) {
+                    // Only handle if not in a text input/textarea
+                    const activeElement = document.activeElement;
+                    const isTextInput = activeElement && (
+                        (activeElement.tagName === 'INPUT' && 
+                         (activeElement.type === 'text' || activeElement.type === 'email' || activeElement.type === 'search' || activeElement.type === 'url')) ||
+                        activeElement.tagName === 'TEXTAREA' ||
+                        activeElement.isContentEditable
+                    );
+                    
+                    // If not in a text input, handle paste for genomic images
+                    if (!isTextInput) {
+                        handlePaste(e);
+                    }
+                });
+            }
+
             function updateFileList(input) {
                 const fileList = document.getElementById('fileList');
                 const existingFiles = JSON.parse(fileList.getAttribute('data-existing-files') || '[]');
@@ -1143,10 +1327,6 @@
                     });
                 }
 
-                // Update the data attribute with current files
-                const currentFiles = Array.from(fileList.querySelectorAll('.file-item span:first-child'))
-                    .map(span => span.textContent.trim());
-                fileList.setAttribute('data-existing-files', JSON.stringify(currentFiles));
             }
 
             function removeFileFromList(button) {
@@ -1155,12 +1335,7 @@
                 const fileList = document.getElementById('fileList');
                 
                 // Remove the file item from the display
-                fileItem.remove();
-                
-                // Update the data attribute
-                const currentFiles = Array.from(fileList.querySelectorAll('.file-item span:first-child'))
-                    .map(span => span.textContent.trim());
-                fileList.setAttribute('data-existing-files', JSON.stringify(currentFiles));
+                fileItem.remove();                
 
                 // If this was a newly added file (not from session), also remove it from the input
                 const input = document.getElementById('genomic_images');
@@ -1236,6 +1411,8 @@
                }
                
                initAutocomplete(); // Initialize auto-complete functionality
+               initializeFileList();
+               setupGenomicDropArea();
            });
 
             function validateDiagnosis() {
