@@ -18,11 +18,11 @@ class Config:
     
     # Directory paths
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    IMAGE_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'images')
-    TEXT_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'clinical_data')
-    CLINICAL_JSON = os.path.join(BASE_DIR, 'patient_data', 'clinical_json')
-    GENOMIC_JSON = os.path.join(BASE_DIR, 'patient_data', 'genomic_json')
-    EXTRACTED_TEXT = os.path.join(BASE_DIR, 'patient_data', 'extracted_text')
+    IMAGE_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'incoming', 'images')
+    TEXT_FOLDER = os.path.join(BASE_DIR, 'patient_data', 'incoming','clinical_data')
+    CLINICAL_JSON = os.path.join(BASE_DIR, 'patient_data','incoming', 'clinical_json')
+    GENOMIC_JSON = os.path.join(BASE_DIR, 'patient_data','incoming', 'genomic_json')
+    EXTRACTED_TEXT = os.path.join(BASE_DIR, 'patient_data','incoming', 'extracted_text')
     LOGS_DIR = os.path.join(BASE_DIR, 'logs')
     
     # Script paths
