@@ -13,11 +13,12 @@ import utils.ai_helper as ai
 import utils.oncotree as onct
 from patient_data.patient_data_config import patient_schema_keys, get_clinical_fields, is_clinical_field
 
-
 logger.add("logs/get_patient_foundation_med_data.log", rotation="10 MB", retention="10 days", enqueue=True)
 
 # Mapping from matchminer keys to XML tags
 mm_patient_to_xml_tag_map = {
+    "SAMPLE_ID": "ReportId",
+    "MRN": "ReportId",
     "BIRTH_DATE": "DOB",
     "FIRST_NAME": "FirstName", 
     "GENDER": "Gender",
@@ -38,13 +39,7 @@ NAMESPACES = {
     'variant': 'http://foundationmedicine.com/compbio/variant-report-external'
 }
 
-def generate_unique_id() -> str:
-    return f"fm-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
-def supplement_mandatory_clinical_fields(patient_data: Dict[str, Any]) -> Dict[str, Any]:    
-    unique_id = generate_unique_id()
-    patient_data["SAMPLE_ID"] = unique_id
-    patient_data["MRN"] = unique_id
+def supplement_mandatory_clinical_fields(patient_data: Dict[str, Any]) -> Dict[str, Any]:
     patient_data["FIRST_NAME"] = "NA"
     patient_data["LAST_NAME"] = "NA"
     patient_data["ORD_PHYSICIAN_EMAIL"] = "NA"
@@ -54,7 +49,7 @@ def supplement_mandatory_clinical_fields(patient_data: Dict[str, Any]) -> Dict[s
     patient_data["TEST_NAME"] = "oncopanel"
     return patient_data
 
-def extract_variants_from_xml(root: etree.Element) -> list:
+def extract_variants_from_xml(root: etree.Element, gene_vus_mapping:dict ) -> list:
     variants = []
 
     for variant in root.xpath('//variant:short-variant', namespaces=NAMESPACES):
@@ -74,12 +69,16 @@ def extract_variants_from_xml(root: etree.Element) -> list:
 
         if variant_classification and variant_classification != 'Other':
             entry["TRUE_VARIANT_CLASSIFICATION"] = variant_classification
+        
+        is_vus = gene_vus_mapping.get(gene)
+        if is_vus == "true":
+            entry["TIER"] = 4
 
         variants.append(entry)
 
     return variants
 
-def extract_cnvs_from_xml(root: etree.Element) -> list:
+def extract_cnvs_from_xml(root: etree.Element, gene_vus_mapping:dict) -> list:
     cnvs = []
 
     for cnv in root.xpath('//variant:copy-number-alteration', namespaces=NAMESPACES):
@@ -102,12 +101,16 @@ def extract_cnvs_from_xml(root: etree.Element) -> list:
 
         if cnv_call:
             entry["CNV_CALL"] = cnv_call
+        
+        is_vus = gene_vus_mapping.get(gene)
+        if is_vus == "true":
+            entry["TIER"] = 4
 
         cnvs.append(entry)
 
     return cnvs
 
-def extract_rearrangements_from_xml(root: etree.Element) -> list:
+def extract_rearrangements_from_xml(root: etree.Element, gene_vus_mapping:dict) -> list:
     svs = []
 
     for sv in root.xpath('//variant:rearrangement ', namespaces=NAMESPACES):
@@ -119,6 +122,10 @@ def extract_rearrangements_from_xml(root: etree.Element) -> list:
             "VARIANT_CATEGORY": "SV",
         }
         svs.append(entry)
+
+        is_vus = gene_vus_mapping.get(gene)
+        if is_vus == "true":
+            entry["TIER"] = 4
 
     return svs
 
@@ -152,9 +159,9 @@ def map_cnv_call(cnv_type: str, copy_number:str) -> Optional[str]:
     # 'Heterozygous deletion'
     
     if cnv_type == "amplification":
-        if copy_number >= 7 :
+        if copy_number >= 4 : # use 4 as cut off
             return "High level amplification"
-        elif copy_number > 2 and copy_number < 7:
+        elif copy_number > 2 and copy_number < 4: 
             return "Gain"
     elif cnv_type == "partial amplification":
         return "Gain"
@@ -173,6 +180,7 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
         patient_data = {}
         
         pmi_data = {
+            "ReportId": root.xpath('//PMI/ReportId/text()'),
             "DOB": root.xpath('//PMI/DOB/text()'),
             "Gender": root.xpath('//PMI/Gender/text()'),
             "SubmittedDiagnosis": root.xpath('//PMI/SubmittedDiagnosis/text()'),
@@ -202,16 +210,22 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
             else:
                 values = pmi_data.get(xml_tag, [])
                 if values and values[0]:
-                    # Special handling for birth date - convert year to full date
-                    if mm_key == "BIRTH_DATE":
+                    value = values[0].strip()
+                    if mm_key == "BIRTH_DATE" and value:
                         try:
-                            year = int(values[0].strip())
-                            birth_date = datetime(year, 1, 1)
+                            birth_date = datetime.strptime(value, "%Y-%m-%d")
                             patient_data[mm_key] = birth_date.strftime("%a, %d %b %Y 10:00:00 GMT")
                         except ValueError:
-                            patient_data[mm_key] = values[0].strip()
+                            try:
+                                if len(value) == 4 and value.isdigit():
+                                    birth_date = datetime(int(value), 1, 1)
+                                    patient_data[mm_key] = birth_date.strftime("%a, %d %b %Y 10:00:00 GMT")
+                                else:
+                                    raise
+                            except ValueError:
+                                patient_data[mm_key] = value
                     else:
-                        patient_data[mm_key] = values[0].strip()   
+                        patient_data[mm_key] = value   
         
         # Map biomarker data
         biomarkers_nodes = root.xpath('//variant:variant-report/variant:biomarkers', namespaces=NAMESPACES)
@@ -233,11 +247,19 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
         
         patient_data = supplement_mandatory_clinical_fields(patient_data)
 
+        variant_prop_nodes = root.xpath('//rr:ResultsPayload//FinalReport//VariantProperties/VariantProperty', namespaces=NAMESPACES)
+        gene_vus_mapping = {}
+        if variant_prop_nodes:  
+            for vp in variant_prop_nodes:
+                gene_name = vp.get('geneName')
+                is_vus = vp.get('isVUS')
+                gene_vus_mapping[gene_name] = is_vus
+
         # Extract variants for genomic data
-        variants = extract_variants_from_xml(root)
-        cnv = extract_cnvs_from_xml(root)
+        variants = extract_variants_from_xml(root, gene_vus_mapping)
+        cnv = extract_cnvs_from_xml(root, gene_vus_mapping)
         variants.extend(cnv)
-        svs = extract_rearrangements_from_xml(root)
+        svs = extract_rearrangements_from_xml(root, gene_vus_mapping)
         variants.extend(svs)
 
         return {
@@ -252,32 +274,88 @@ def parse_foundation_med_xml(xml_content: bytes, id: str) -> Dict[str, Any]:
         logger.error(f"Error parsing XML for {id}: {str(e)}")
         raise
 
-def main(xml_file: str, output_prefix: str = None):
-    """Main function to process Foundation Medicine XML file."""
-    current_dir = os.path.dirname(__file__)    
-    
-    xml_file_path = os.path.join(current_dir, xml_file)
+def process_xml_file(xml_file_path: str):
+    """Process a single XML file and write clinical/genomic JSON outputs."""
     logger.info(f'Reading XML file: {xml_file_path}')
-    
+
     if not os.path.exists(xml_file_path):
         logger.error(f'XML file not found: {xml_file_path}')
         return
-    
+
+    base_dir = os.path.dirname(__file__)
+
     try:
         with open(xml_file_path, 'rb') as file:
             xml_content = file.read()
-        
+
         logger.info(f'Successfully read XML content from {xml_file_path}')
-        
+
+        default_id = os.path.splitext(os.path.basename(xml_file_path))[0]
+
         # Parse XML and extract data
-        extracted_data = parse_foundation_med_xml(xml_content, output_prefix)
-        
-        # Pretty print the result        
-        print(json.dumps(extracted_data, indent=2, ensure_ascii=False))
-        
+        extracted_data = parse_foundation_med_xml(xml_content, default_id)
+
+        clinical_data = extracted_data.get("clinical_data", {})
+        genomic_data = extracted_data.get("genomic_data", [])
+
+        sample_id = clinical_data.get("SAMPLE_ID")
+        if not sample_id:
+            raise ValueError("Unable to determine sample ID for output filenames.")
+
+        clinical_dir = os.path.join(base_dir, "incoming","clinical_json")
+        genomic_dir = os.path.join(base_dir,"incoming", "genomic_json")
+        os.makedirs(clinical_dir, exist_ok=True)
+        os.makedirs(genomic_dir, exist_ok=True)
+
+        clinical_path = os.path.join(clinical_dir, f"{sample_id}.json")
+        genomic_path = os.path.join(genomic_dir, f"{sample_id}.json")
+
+        with open(clinical_path, "w", encoding="utf-8") as clinical_file:
+            json.dump(clinical_data, clinical_file, indent=2, ensure_ascii=False)
+        with open(genomic_path, "w", encoding="utf-8") as genomic_file:
+            json.dump(genomic_data, genomic_file, indent=2, ensure_ascii=False)
+
+        logger.info(f"Clinical data saved to {clinical_path}")
+        logger.info(f"Genomic data saved to {genomic_path}")
+
     except Exception as e:
-        logger.error(f'Error processing XML file {xml_file}: {str(e)}')
+        logger.error(f'Error processing XML file {xml_file_path}: {str(e)}')
         raise
+
+
+def main(xml_file: Optional[str] = None, xml_dir: Optional[str] = None):
+    """Main entry point to process one XML file or all XML files in a directory."""
+    base_dir = os.path.dirname(__file__)
+
+    if xml_dir:
+        xml_dir_path = xml_dir if os.path.isabs(xml_dir) else os.path.join(base_dir, xml_dir)
+        if not os.path.isdir(xml_dir_path):
+            logger.error(f"XML directory not found: {xml_dir_path}")
+            return
+
+        xml_files = sorted(
+            os.path.join(xml_dir_path, fname)
+            for fname in os.listdir(xml_dir_path)
+            if fname.lower().endswith(".xml")
+        )
+
+        if not xml_files:
+            logger.warning(f"No XML files found in directory: {xml_dir_path}")
+            return
+
+        for path in xml_files:
+            try:
+                process_xml_file(path)
+            except Exception:
+                logger.error(f"Failed to process XML file: {path}", exc_info=True)
+        return
+
+    if not xml_file:
+        logger.error("No XML file provided. Specify a file or use --xml-dir.")
+        return
+
+    xml_file_path = xml_file if os.path.isabs(xml_file) else os.path.join(base_dir, xml_file)
+    process_xml_file(xml_file_path)
 
 def get_oncotree_diagnosis(id, value):
     """
@@ -337,8 +415,9 @@ def get_oncotree_diagnosis(id, value):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract patient data from Foundation Medicine XML format.")
-    parser.add_argument("xml_file", type=str, help="Name of XML file containing Foundation Medicine data")
-    parser.add_argument("--output-prefix", type=str, help="Output prefix for JSON files (defaults to XML filename without extension)")
+    parser.add_argument("--xml-file", type=str, help="Path to XML file containing Foundation Medicine data")
+    parser.add_argument("--xml-dir", type=str, help="Directory containing multiple XML files to process")
     args = parser.parse_args()
-    
-    main(args.xml_file, args.output_prefix)
+
+    main(args.xml_file, args.xml_dir)
+
