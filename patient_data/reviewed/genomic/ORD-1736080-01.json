@@ -1,0 +1,124 @@
+[
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "FLT3",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "ARID1A",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CEBPA",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PDCD1",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "EPHA3",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Nonsense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "MAP2K2",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "MET",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "ATRX",
+    "VARIANT_CATEGORY": "MUTATION"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "TP53",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "ALK",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PTPN11",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "HGF",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CEBPA",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "High level amplification",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "KLHL6",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "High level amplification",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "NKX2-1",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "High level amplification"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CCNE1",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "High level amplification"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CD22",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "High level amplification",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "SOX2",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "High level amplification"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CRKL",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "High level amplification"
+  }
+]

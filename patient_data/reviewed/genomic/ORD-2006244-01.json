@@ -1,0 +1,92 @@
+[
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "KDM5C",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "TSC2",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Frame_Shift_Ins"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PARP1",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PARP3",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "In_Frame_Del",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "INPP4B",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "BCOR",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PTPN11",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "EGFR",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "AURKA",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "ERBB4",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "KEAP1",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CHEK2",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "BRD4",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  }
+]

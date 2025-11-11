@@ -1,0 +1,19 @@
+{
+  "SAMPLE_ID": "ORD-1507996-01",
+  "MRN": "ORD-1507996-01",
+  "BIRTH_DATE": "Tue, 20 Nov 1956 10:00:00 GMT",
+  "GENDER": "Male",
+  "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Lung Adenocarcinoma",
+  "ONCOTREE_PRIMARY_DIAGNOSIS": "Lung Adenocarcinoma",
+  "PATHOLOGIST_NAME": "Collins, Robert J.",
+  "REPORT_DATE": "Fri, 18 Nov 2022 10:00:00 GMT",
+  "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 1.21,
+  "MMR_STATUS": null,
+  "FIRST_NAME": "NA",
+  "LAST_NAME": "NA",
+  "ORD_PHYSICIAN_EMAIL": "NA",
+  "PANEL_VERSION": 0,
+  "REPORT_VERSION": "0",
+  "VITAL_STATUS": "alive",
+  "TEST_NAME": "oncopanel"
+}

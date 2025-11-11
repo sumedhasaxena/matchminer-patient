@@ -1,0 +1,62 @@
+[
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "EPHB1",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "RET",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "KLHL6",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "ABL1",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CREBBP",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "EGFR",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "In_Frame_Del"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PARP1",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CDKN2A",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "Homozygous deletion"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CDKN2B",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "Homozygous deletion"
+  }
+]

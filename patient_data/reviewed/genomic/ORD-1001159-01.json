@@ -1,0 +1,91 @@
+[
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "MUTYH",
+    "VARIANT_CATEGORY": "MUTATION"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "MLL",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PIK3CB",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "SPEN",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "MTOR",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "In_Frame_Del",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "EGFR",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "In_Frame_Del"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "PPP2R1A",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CTNNB1",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "In_Frame_Del"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "BCL6",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "RET",
+    "VARIANT_CATEGORY": "MUTATION",
+    "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CDKN2A",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "Homozygous deletion"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "CDKN2B",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "Homozygous deletion"
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "EPHA3",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "Homozygous deletion",
+    "TIER": 4
+  },
+  {
+    "WILDTYPE": false,
+    "TRUE_HUGO_SYMBOL": "MTAP",
+    "VARIANT_CATEGORY": "CNV",
+    "CNV_CALL": "Homozygous deletion"
+  }
+]

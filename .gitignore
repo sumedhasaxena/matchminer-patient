@@ -1,13 +1,15 @@
 __pycache__/*
 utils/__pycache__/*
-patient_data/extracted_text/*
-patient_data/clinical_data/*
-patient_data/clinical_json/*
-patient_data/images/*
-patient_data/genomic_json/*
+patient_data/incoming/extracted_text/*
+patient_data/incoming/clinical_data/*
+patient_data/incoming/clinical_json/*
+patient_data/incoming/images/*
+patient_data/incoming/genomic_json/*
+
 patient_data/__pycache__/*
 .vscode/launch.json
 logs/*
 *.pyc
 
 gunicorn_start.sh
+patient_data/logs/*

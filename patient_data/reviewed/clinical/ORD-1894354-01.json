@@ -1,0 +1,19 @@
+{
+  "SAMPLE_ID": "ORD-1894354-01",
+  "MRN": "ORD-1894354-01",
+  "BIRTH_DATE": "Thu, 16 Oct 1947 10:00:00 GMT",
+  "GENDER": "Male",
+  "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Non-Small Cell Lung Cancer",
+  "ONCOTREE_PRIMARY_DIAGNOSIS": "Non-Small Cell Lung Cancer",
+  "PATHOLOGIST_NAME": "Not Provided",
+  "REPORT_DATE": "Tue, 28 May 2024 10:00:00 GMT",
+  "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 15.69,
+  "MMR_STATUS": "Proficient (MMR-P / MSS)",
+  "FIRST_NAME": "NA",
+  "LAST_NAME": "NA",
+  "ORD_PHYSICIAN_EMAIL": "NA",
+  "PANEL_VERSION": 0,
+  "REPORT_VERSION": "0",
+  "VITAL_STATUS": "alive",
+  "TEST_NAME": "oncopanel"
+}

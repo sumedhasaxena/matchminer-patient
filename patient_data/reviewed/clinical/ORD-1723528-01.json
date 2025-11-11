@@ -1,0 +1,19 @@
+{
+  "SAMPLE_ID": "ORD-1723528-01",
+  "MRN": "ORD-1723528-01",
+  "BIRTH_DATE": "Tue, 22 Dec 1953 10:00:00 GMT",
+  "GENDER": "Male",
+  "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Cancer of Unknown Primary, NOS",
+  "ONCOTREE_PRIMARY_DIAGNOSIS": "Cancer of Unknown Primary, NOS",
+  "PATHOLOGIST_NAME": "Not Provided",
+  "REPORT_DATE": "Sat, 23 Sep 2023 10:00:00 GMT",
+  "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 8.85,
+  "MMR_STATUS": "Proficient (MMR-P / MSS)",
+  "FIRST_NAME": "NA",
+  "LAST_NAME": "NA",
+  "ORD_PHYSICIAN_EMAIL": "NA",
+  "PANEL_VERSION": 0,
+  "REPORT_VERSION": "0",
+  "VITAL_STATUS": "alive",
+  "TEST_NAME": "oncopanel"
+}

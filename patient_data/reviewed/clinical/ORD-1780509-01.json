@@ -1,0 +1,19 @@
+{
+  "SAMPLE_ID": "ORD-1780509-01",
+  "MRN": "ORD-1780509-01",
+  "BIRTH_DATE": "Sun, 16 Sep 1951 10:00:00 GMT",
+  "GENDER": "Female",
+  "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Lung Squamous Cell Carcinoma",
+  "ONCOTREE_PRIMARY_DIAGNOSIS": "Lung Squamous Cell Carcinoma",
+  "PATHOLOGIST_NAME": "Not Provided",
+  "REPORT_DATE": "Sat, 16 Dec 2023 10:00:00 GMT",
+  "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 3.79,
+  "MMR_STATUS": "Proficient (MMR-P / MSS)",
+  "FIRST_NAME": "NA",
+  "LAST_NAME": "NA",
+  "ORD_PHYSICIAN_EMAIL": "NA",
+  "PANEL_VERSION": 0,
+  "REPORT_VERSION": "0",
+  "VITAL_STATUS": "alive",
+  "TEST_NAME": "oncopanel"
+}

@@ -1,0 +1,19 @@
+{
+  "SAMPLE_ID": "ORD-1785670-01",
+  "MRN": "ORD-1785670-01",
+  "BIRTH_DATE": "Sat, 15 Aug 1959 10:00:00 GMT",
+  "GENDER": "Male",
+  "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Lung Adenocarcinoma",
+  "ONCOTREE_PRIMARY_DIAGNOSIS": "Lung Adenocarcinoma",
+  "PATHOLOGIST_NAME": "Not Provided",
+  "REPORT_DATE": "Thu, 21 Dec 2023 10:00:00 GMT",
+  "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 51.84,
+  "MMR_STATUS": "Deficient (MMR-D / MSI-H)",
+  "FIRST_NAME": "NA",
+  "LAST_NAME": "NA",
+  "ORD_PHYSICIAN_EMAIL": "NA",
+  "PANEL_VERSION": 0,
+  "REPORT_VERSION": "0",
+  "VITAL_STATUS": "alive",
+  "TEST_NAME": "oncopanel"
+}

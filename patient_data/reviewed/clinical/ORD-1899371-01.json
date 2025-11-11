@@ -1,0 +1,19 @@
+{
+  "SAMPLE_ID": "ORD-1899371-01",
+  "MRN": "ORD-1899371-01",
+  "BIRTH_DATE": "Tue, 21 Mar 1939 10:00:00 GMT",
+  "GENDER": "Female",
+  "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Lung Adenocarcinoma",
+  "ONCOTREE_PRIMARY_DIAGNOSIS": "Lung Adenocarcinoma",
+  "PATHOLOGIST_NAME": "Not Provided",
+  "REPORT_DATE": "Fri, 07 Jun 2024 10:00:00 GMT",
+  "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 6.32,
+  "MMR_STATUS": "Proficient (MMR-P / MSS)",
+  "FIRST_NAME": "NA",
+  "LAST_NAME": "NA",
+  "ORD_PHYSICIAN_EMAIL": "NA",
+  "PANEL_VERSION": 0,
+  "REPORT_VERSION": "0",
+  "VITAL_STATUS": "alive",
+  "TEST_NAME": "oncopanel"
+}
