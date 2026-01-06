@@ -33,7 +33,7 @@ import os
 import time
 import re
 
-extracted_text_dir = 'extracted_text'
+extracted_text_dir = 'incoming/extracted_text'
 image_to_be_extracted_dir = 'images'
 
 # Set up Loguru to log to a file (e.g., logs/app.log)

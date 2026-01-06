@@ -10,9 +10,9 @@ import argparse
 from loguru import logger
 from utils.census import load_gene_to_ref_seq_mapping
 
-extracted_text_dir = 'extracted_text'
-genomic_json_dir = 'genomic_json'
-clinical_txt_dir = 'clinical_data'
+extracted_text_dir = 'incoming/extracted_text'
+genomic_json_dir = 'incoming/genomic_json'
+clinical_txt_dir = 'incoming/clinical_data'
 
 # Set up Loguru to log to a file
 logger.add("logs/get_patient_genomic_data.log", rotation="10 MB", retention="10 days", enqueue=True)

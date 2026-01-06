@@ -12,8 +12,8 @@ from patient_data.patient_data_config import patient_schema_keys, get_clinical_f
 # Set up Loguru to log to its own file (as this can also be run as a standalone script)
 logger.add("logs/get_patient_clinical_data.log", rotation="10 MB", retention="10 days", enqueue=True)
 
-clinical_txt_dir = 'clinical_data'
-clinical_json_dir = 'clinical_json'
+clinical_txt_dir = 'incoming/clinical_data'
+clinical_json_dir = 'incoming/clinical_json'
 
 def get_oncotree_diagnosis(mmid, value):
     """
