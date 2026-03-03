@@ -1,0 +1,71 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "EML4",
+        "VARIANT_CATEGORY": "SV",
+        "LEFT_PARTNER_GENE": "EML4",
+        "RIGHT_PARTNER_GENE": "ALK"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "ALK",
+        "VARIANT_CATEGORY": "SV",
+        "LEFT_PARTNER_GENE": "EML4",
+        "RIGHT_PARTNER_GENE": "ALK"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "TP53",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.D281H"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CDKN2A",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Homozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "FGFR1",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "DICER1",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "BRCA1",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "SMAD4",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CHEK2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "NF2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "TSC1",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    }
+]

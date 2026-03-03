@@ -1,0 +1,20 @@
+{
+    "BIRTH_DATE": "Tue, 01 Jan 1991 10:00:00 GMT",
+    "FIRST_NAME": "NA",
+    "GENDER": "Male",
+    "LAST_NAME": "NA",
+    "MRN": "260303-0002",
+    "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Astrocytoma",
+    "ONCOTREE_PRIMARY_DIAGNOSIS": "Astrocytoma",
+    "PANEL_VERSION": 0,
+    "PATHOLOGIST_NAME": "NA",
+    "ORD_PHYSICIAN_EMAIL": "NA",
+    "REPORT_DATE": "Tue, 03 Mar 2026 10:00:00 GMT",
+    "REPORT_VERSION": "0",
+    "SAMPLE_ID": "260303-0002",
+    "TEST_NAME": "oncopanel",
+    "VITAL_STATUS": "alive",
+    "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 43.0,
+    "MGMT_PROMOTER_STATUS": "Methylated",
+    "MMR_STATUS": "Proficient (MMR-P / MSS)"
+}

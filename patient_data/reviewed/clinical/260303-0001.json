@@ -1,0 +1,19 @@
+{
+    "BIRTH_DATE": "Sat, 01 Jan 1955 10:00:00 GMT",
+    "FIRST_NAME": "NA",
+    "GENDER": "Male",
+    "LAST_NAME": "NA",
+    "MRN": "260303-0001",
+    "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Pancreatic Adenocarcinoma",
+    "ONCOTREE_PRIMARY_DIAGNOSIS": "Pancreatic Adenocarcinoma",
+    "PANEL_VERSION": 0,
+    "PATHOLOGIST_NAME": "NA",
+    "ORD_PHYSICIAN_EMAIL": "NA",
+    "REPORT_DATE": "Tue, 03 Mar 2026 10:00:00 GMT",
+    "REPORT_VERSION": "0",
+    "SAMPLE_ID": "260303-0001",
+    "TEST_NAME": "oncopanel",
+    "VITAL_STATUS": "alive",
+    "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 2.0,
+    "MMR_STATUS": "Proficient (MMR-P / MSS)"
+}
