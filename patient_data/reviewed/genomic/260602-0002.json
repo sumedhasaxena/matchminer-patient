@@ -1,0 +1,9 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "KRAS",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.G12D"
+    }
+]

@@ -1,0 +1,143 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CDKN2A",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Nonsense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.E74*"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "KRAS",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.G12D"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PTEN",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.R1300"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "FBXW7",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CDKN2A",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PTCH1",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "BRCA2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "DICER1",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "ADAMTS11",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.G987D"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "ARID2",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.A810P"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CALR",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Splice_Acceptor"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CBL",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.R593W"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CTCF",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.D91G"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "DAXX",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.E485A"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "KMT2D",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.S4414G"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "IRP1R",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.A1912T"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "MUC16",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.L11067P"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "NBN",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.V346M"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "NEFH",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.S787R"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "NSD1",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.G1132R"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "TERT",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.H752R"
+    }
+]

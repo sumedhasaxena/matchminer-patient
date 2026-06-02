@@ -1,0 +1,23 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CD74",
+        "VARIANT_CATEGORY": "SV",
+        "LEFT_PARTNER_GENE": "CD74",
+        "RIGHT_PARTNER_GENE": "NRG1"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "TP53",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.R249G"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "BRCA1",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.C801Y"
+    }
+]

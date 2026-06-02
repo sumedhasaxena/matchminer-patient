@@ -1,0 +1,33 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "ERBB2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "APC",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Frame_Shift_Ins",
+        "TRUE_PROTEIN_CHANGE": "p.S1415fs*4"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CDK12",
+        "VARIANT_CATEGORY": "SV"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "TP53",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.R175H"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CBL",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Splice_Site"
+    }
+]

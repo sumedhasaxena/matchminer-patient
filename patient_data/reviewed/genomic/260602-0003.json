@@ -1,0 +1,81 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "ERBB3",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.R1127H"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "NF1",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Frame_Shift_Del",
+        "TRUE_PROTEIN_CHANGE": "p.L995fs"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PIK3CA",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.H1047R"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "KDR",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "NTRK3",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "KIT",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PDGFRA",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CD79B",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "LRP1B",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Splice_Region",
+        "TRUE_PROTEIN_CHANGE": "c.11395+5G>A"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "MUC16",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.S12138P"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PIK3C2G",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.N454Y"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PMS1",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.R919C"
+    }
+]

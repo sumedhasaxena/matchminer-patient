@@ -1,0 +1,20 @@
+{
+    "BIRTH_DATE": "Mon, 01 Jan 1962 10:00:00 GMT",
+    "FIRST_NAME": "NA",
+    "GENDER": "Female",
+    "LAST_NAME": "NA",
+    "MRN": "260505-0002",
+    "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Glioblastoma",
+    "ONCOTREE_PRIMARY_DIAGNOSIS": "Glioblastoma",
+    "PANEL_VERSION": 0,
+    "PATHOLOGIST_NAME": "NA",
+    "ORD_PHYSICIAN_EMAIL": "NA",
+    "REPORT_DATE": "Tue, 05 May 2026 10:00:00 GMT",
+    "REPORT_VERSION": "0",
+    "SAMPLE_ID": "260505-0002",
+    "TEST_NAME": "oncopanel",
+    "VITAL_STATUS": "alive",
+    "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 2.6,
+    "MGMT_PROMOTER_STATUS": "Unmethylated",
+    "MMR_STATUS": "Proficient (MMR-P / MSS)"
+}

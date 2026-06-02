@@ -1,0 +1,17 @@
+{
+    "BIRTH_DATE": "Thu, 01 Jan 1953 10:00:00 GMT",
+    "FIRST_NAME": "NA",
+    "GENDER": "Male",
+    "LAST_NAME": "NA",
+    "MRN": "260602-0004",
+    "ONCOTREE_PRIMARY_DIAGNOSIS_NAME": "Lung Squamous Cell Carcinoma",
+    "ONCOTREE_PRIMARY_DIAGNOSIS": "Lung Squamous Cell Carcinoma",
+    "PANEL_VERSION": 0,
+    "PATHOLOGIST_NAME": "NA",
+    "ORD_PHYSICIAN_EMAIL": "NA",
+    "REPORT_DATE": "Tue, 02 Jun 2026 10:00:00 GMT",
+    "REPORT_VERSION": "0",
+    "SAMPLE_ID": "260602-0004",
+    "TEST_NAME": "oncopanel",
+    "VITAL_STATUS": "alive"
+}

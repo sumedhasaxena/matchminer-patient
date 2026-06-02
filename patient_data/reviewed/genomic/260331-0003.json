@@ -1,0 +1,64 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "RB1",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Nonsense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.W78*"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "EGFR",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "MDM2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "EGFR",
+        "VARIANT_CATEGORY": "SV"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PTEN",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "BRCA2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "CHEK2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "MDM4",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "FGFR",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "High level amplification"
+    },
+    {
+        "WILDTYPE": true,
+        "TRUE_HUGO_SYMBOL": "IDH1"
+    },
+    {
+        "WILDTYPE": true,
+        "TRUE_HUGO_SYMBOL": "IDH2"
+    }
+]
