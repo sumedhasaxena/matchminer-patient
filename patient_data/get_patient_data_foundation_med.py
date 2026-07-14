@@ -9,8 +9,6 @@ from lxml import etree
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import utils.ai_helper as ai
-import utils.oncotree as onct
 from patient_data.patient_data_config import patient_schema_keys, get_clinical_fields, is_clinical_field
 
 logger.add("logs/get_patient_foundation_med_data.log", rotation="10 MB", retention="10 days", enqueue=True)
@@ -359,59 +357,15 @@ def main(xml_file: Optional[str] = None, xml_dir: Optional[str] = None):
 
 def get_oncotree_diagnosis(id, value):
     """
-    Oncotree diagnosis mapping:
-    1. If value is exact level2/level3 match
-    2. If not exact match, use AI to find level1, then level2/level3
+    Map free-text diagnosis to OncoTree term string.
+    Reuses the shared hierarchy resolver from get_patient_clinical_data.
     """
-    level_1_diagnosis, level_2_diagnosis, level_3_diagnosis, mapping_l1_all, level1_to_level2, level2_to_level3 = onct.get_all_oncotree_data()
-    
-    # Step 1: Check if value is an exact level2 or level3 match
-    value_normalized = value.strip().lower()
-    level_3_diagnosis_lower = {x.strip().lower() for x in level_3_diagnosis}
-    level_2_diagnosis_lower = {x.strip().lower() for x in level_2_diagnosis}
-    if value_normalized in level_3_diagnosis_lower:
-        # Find the original value with correct casing from the set
-        for item in level_3_diagnosis:
-            if item.strip().lower() == value_normalized:
-                return item
-    elif value_normalized in level_2_diagnosis_lower:
-        # Find the original value with correct casing from the set
-        for item in level_2_diagnosis:
-            if item.strip().lower() == value_normalized:
-                return item
-    
-    # Step 2: Not an exact match, use AI to child level diagnosis
-    logger.info(f"ID: {id} | No exact match found, using AI for: {value}")
-    
-    # Get level1 using AI
-    result = ai.get_level1_diagnosis_from_free_text(id, {value}, level_1_diagnosis)
-    
-    if isinstance(result, dict) and 'error' in result:
-        logger.error(f"ID: {id} | AI service error: {result.get('message', 'Unknown error')}")
-        raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
-    
-    level1_diagnosis = result.get('oncotree_diagnosis')
-    
-    if not level1_diagnosis:
-        logger.debug(f"ID: {id} | No level1 diagnosis found for: {value}")
-        return None
-    
-    child_oncotree_values = mapping_l1_all[level1_diagnosis]
-    result = ai.get_child_level_diagnosis_from_clinical_condition(id, child_oncotree_values, value)
-    
-    if isinstance(result, dict) and 'error' in result:
-        logger.error(f"ID: {id} | AI service error in child diagnosis: {result.get('message', 'Unknown error')}")
-        raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
-    
-    child_diagnosis = result.get('oncotree_diagnosis', None)
-    
-    if not child_diagnosis:
-        logger.info(f"ID: {id} | No child diagnosis found, returning level1 only")
-        return level1_diagnosis
-    else:
-        return child_diagnosis
+    from patient_data.get_patient_clinical_data import get_oncotree_diagnosis as resolve_oncotree_diagnosis
 
-    return None
+    result = resolve_oncotree_diagnosis(id, value)
+    if not result:
+        return None
+    return result.get('primary_diagnosis')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract patient data from Foundation Medicine XML format.")

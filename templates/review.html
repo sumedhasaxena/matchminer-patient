@@ -255,36 +255,12 @@
                         </td>
                     </tr>
                     <tr>
-                        <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
-                        <td colspan="2">
-                            <select id="diagnosis_level1" name="diagnosis_level1" required onchange="updateDiagnosisLevel2()">
-                                <option value="">Select Level 1</option>
-                                {% for level1 in level1_list %}
-                                <option value="{{ level1 }}" {% if diagnosis_result and diagnosis_result.level1 == level1 %}selected{% endif %}>{{ level1 }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><label for="diagnosis_level2">Diagnosis Level 2:</label></td>
-                        <td colspan="2">
-                            <select id="diagnosis_level2" name="diagnosis_level2" onchange="updateDiagnosisLevel3()">
-                                <option value="">Select Level 2</option>
-                                {% for level2 in level2_list %}
-                                <option value="{{ level2 }}" {% if diagnosis_result and (diagnosis_result.level2|trim == level2|trim) %}selected{% endif %}>{{ level2 }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
-                        <td colspan="2">
-                            <select id="diagnosis_level3" name="diagnosis_level3">
-                                <option value="">Select Level 3 (Optional)</option>
-                                {% for level3 in level3_list %}
-                                <option value="{{ level3 }}" {% if diagnosis_result and (diagnosis_result.level3|trim == level3|trim) %}selected{% endif %}>{{ level3 }}</option>
-                                {% endfor %}
-                            </select>
+                        <td colspan="3">
+                            <table class="form-table" style="min-width: 0; width: 100%;">
+                                <tbody id="diagnosis-cascade"></tbody>
+                            </table>
+                            <input type="hidden" id="primary_diagnosis" name="primary_diagnosis" value="">
+                            <input type="hidden" id="diagnosis_path" name="diagnosis_path" value="[]">
                         </td>
                     </tr>
                     <!-- Dynamic Dropdowns -->                    
@@ -349,44 +325,20 @@
         </form>
     </div>
 
+    <script src="{{ url_for('static', filename='diagnosis_cascade.js') }}"></script>
     <script>
-        function updateDiagnosisLevel2() {
-            const level1 = document.getElementById('diagnosis_level1').value;
-            const level2Select = document.getElementById('diagnosis_level2');
-            const level3Select = document.getElementById('diagnosis_level3');
-            level2Select.innerHTML = '<option value="">Select Level 2</option>';
-            level3Select.innerHTML = '<option value="">Select Level 3 (Optional)</option>';
-            if (level1) {
-                fetch(`/get_level2/${encodeURIComponent(level1)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(level2 => {
-                            const option = document.createElement('option');
-                            option.value = level2;
-                            option.textContent = level2;
-                            level2Select.appendChild(option);
-                        });
-                    });
-            }
-        }
+        const level1List = {{ level1_list | tojson }};
+        const initialDiagnosisPath = {{ (diagnosis_result.path if diagnosis_result and diagnosis_result.path else []) | tojson }};
 
-        function updateDiagnosisLevel3() {
-            const level2 = document.getElementById('diagnosis_level2').value;
-            const level3Select = document.getElementById('diagnosis_level3');
-            level3Select.innerHTML = '<option value="">Select Level 3 (Optional)</option>';
-            if (level2) {
-                fetch(`/get_level3/${encodeURIComponent(level2)}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        data.forEach(level3 => {
-                            const option = document.createElement('option');
-                            option.value = level3;
-                            option.textContent = level3;
-                            level3Select.appendChild(option);
-                        });
-                    });
-            }
-        }
+        document.addEventListener('DOMContentLoaded', async function() {
+            await DiagnosisCascade.init('diagnosis-cascade', level1List, initialDiagnosisPath, {
+                requireLevel1: true
+            });
+        });
+
+        document.querySelector('form').addEventListener('submit', function() {
+            DiagnosisCascade.updateHiddenFields();
+        });
     </script>
 </body>
 </html> 

@@ -665,56 +665,12 @@
                     </tr>
                     <tbody id="advanced-diagnosis-section" style="display: none;">
                         <tr>
-                            <td><label for="diagnosis_level1">Diagnosis Level 1:</label></td>
-                            <td style="width: 260px;">
-                                <select id="diagnosis_level1" name="diagnosis_level1" onchange="updateDiagnosisLevel2();clearAdditionalFields()">
-                                    <option value="">Select Level 1</option>
-                                    {% for level1 in level1_list %}
-                                    <option value="{{ level1 }}" {% if diagnosis_result.level1 == level1 %}selected{% endif %}>{{ level1 }}</option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                            <td style="width: 1px; max-width: 350px; vertical-align: top;">
-                                <div id="diagnosis-hierarchy" class="diagnosis-hierarchy">
-                                    <button type="button" class="toggle-hierarchy" onclick="toggleHierarchy()">
-                                        <span>Sub-levels of selected diagnosis</span>
-                                        <span class="arrow">▼</span>
-                                    </button>
-                                    <div class="hierarchy-content">
-                                        <table>
-                                            <thead>
-                                                <tr>
-                                                    <th>Level 2</th>
-                                                    <th>Level 3</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="diagnosis-hierarchy-body">
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><label for="diagnosis_level2">Diagnosis Level 2:</label></td>
-                            <td colspan="2">
-                                <select id="diagnosis_level2" name="diagnosis_level2" onchange="updateDiagnosisLevel3()">
-                                    <option value="">Select Level 2</option>
-                                    {% for level2 in level2_list %}
-                                    <option value="{{ level2 }}" {% if diagnosis_result.level2 == level2 %}selected{% endif %}>{{ level2 }}</option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><label for="diagnosis_level3">Diagnosis Level 3:</label></td>
-                            <td colspan="2">
-                                <select id="diagnosis_level3" name="diagnosis_level3">
-                                    <option value="">Select Level 3 (Optional)</option>
-                                    {% for level3 in level3_list %}
-                                    <option value="{{ level3 }}" {% if diagnosis_result.level3 == level3 %}selected{% endif %}>{{ level3 }}</option>
-                                    {% endfor %}
-                                </select>
+                            <td colspan="3">
+                                <table class="form-table" style="min-width: 0; width: 100%;">
+                                    <tbody id="diagnosis-cascade"></tbody>
+                                </table>
+                                <input type="hidden" id="primary_diagnosis" name="primary_diagnosis" value="">
+                                <input type="hidden" id="diagnosis_path" name="diagnosis_path" value="[]">
                             </td>
                         </tr>
                         <tr>
@@ -781,6 +737,7 @@
             </div>
         </form>
 
+        <script src="{{ url_for('static', filename='diagnosis_cascade.js') }}"></script>
         <script>
             // Auto-complete functionality
             let autocompleteTimeout;
@@ -788,6 +745,8 @@
             let suggestions = [];
             let oncotreeData = []; // Store OncoTree data for client-side search
             let genomicFilesBeforePicker = [];
+            const level1List = {{ level1_list | tojson }};
+            const initialDiagnosisPath = {{ (diagnosis_result.path if diagnosis_result and diagnosis_result.path else []) | tojson }};
 
             // Load OncoTree data once when page loads
             async function loadOncotreeData() {
@@ -923,134 +882,13 @@
                 selectedIndex = -1;
             }
 
-            function toggleHierarchy() {
-                const button = document.querySelector('.toggle-hierarchy');
-                const content = document.querySelector('.hierarchy-content');
-                button.classList.toggle('expanded');
-                content.classList.toggle('expanded');
-            }
-            
             function clearAdditionalFields() {
                 document.querySelectorAll('.dynamic-diagnosis-row').forEach(row => row.remove());
                 document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
             }
 
-            function updateDiagnosisLevel2() {
-                const level1 = document.getElementById('diagnosis_level1').value;
-                const level2Select = document.getElementById('diagnosis_level2');
-                const level3Select = document.getElementById('diagnosis_level3');
-                const hierarchyDiv = document.getElementById('diagnosis-hierarchy');
-                const hierarchyBody = document.getElementById('diagnosis-hierarchy-body');
-                const toggleButton = document.querySelector('.toggle-hierarchy');
-                const toggleButtonLabel = toggleButton.querySelector('span');
-                const content = document.querySelector('.hierarchy-content');
-                
-                // Set dynamic button label
-                if (level1) {
-                    toggleButtonLabel.textContent = `Diagnosis tree for ${level1}`;
-                } else {
-                    toggleButtonLabel.textContent = 'Diagnosis tree';
-                }
-                
-                // Reset level2 and level3
-                level2Select.innerHTML = '<option value="">Select Level 2</option>';
-                level3Select.innerHTML = '<option value="">Select Level 3</option>';
-                
-                if (level1) {
-                    // Fetch and populate the hierarchy table
-                    fetch(`/get_level2/${encodeURIComponent(level1)}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            // Populate level2 dropdown
-                            data.forEach(level2 => {
-                                const option = document.createElement('option');
-                                option.value = level2;
-                                option.textContent = level2;
-                                level2Select.appendChild(option);
-                            });
-
-                            // Show hierarchy container
-                            hierarchyDiv.style.display = 'block';
-                            // Clear hierarchy table body ONCE here
-                            hierarchyBody.innerHTML = '';
-                            
-                            // Reset toggle state
-                            toggleButton.classList.remove('expanded');
-                            content.classList.remove('expanded');
-
-                            // For each level2, fetch its level3 options
-                            const level2Promises = data.map(level2 => 
-                                fetch(`/get_level3/${encodeURIComponent(level2)}`)
-                                    .then(response => response.json())
-                                    .then(level3Data => ({
-                                        level2,
-                                        level3Data
-                                    }))
-                            );
-
-                            Promise.all(level2Promises)
-                                .then(results => {
-                                    // Only append rows after clearing, and do it once
-                                    results.forEach(({level2, level3Data}) => {
-                                        const row = document.createElement('tr');
-                                        
-                                        const level2Cell = document.createElement('td');
-                                        level2Cell.textContent = level2;
-                                        row.appendChild(level2Cell);
-                                        
-                                        const level3Cell = document.createElement('td');
-                                        if (level3Data.length > 0) {
-                                            level3Cell.textContent = level3Data.join(', ');
-                                        } else {
-                                            level3Cell.textContent = '-';
-                                        }
-                                        row.appendChild(level3Cell);
-                                        
-                                        hierarchyBody.appendChild(row);
-                                    });
-                                })
-                                .catch(error => {
-                                    console.error('Error loading level 3 data:', error);
-                                    hierarchyBody.innerHTML = '<tr><td colspan="2">Error loading diagnosis hierarchy</td></tr>';
-                                });
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            hierarchyDiv.style.display = 'none';
-                        });
-                } else {
-                    hierarchyDiv.style.display = 'none';
-                    // Also clear hierarchy table body if no level1 selected
-                    hierarchyBody.innerHTML = '';
-                }
-            }
-
-            function updateDiagnosisLevel3() {
-                const level2 = document.getElementById('diagnosis_level2').value;
-                const level3Select = document.getElementById('diagnosis_level3');
-                
-                // Reset level3
-                level3Select.innerHTML = '<option value="">Select Level 3</option>';
-                
-                if (level2) {
-                    fetch(`/get_level3/${encodeURIComponent(level2)}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            data.forEach(level3 => {
-                                const option = document.createElement('option');
-                                option.value = level3;
-                                option.textContent = level3;
-                                level3Select.appendChild(option);
-                            });
-                        })
-                        .catch(error => console.error('Error:', error));
-                }
-            }
-
             function showAdditionalFields() {
-                const level1 = document.getElementById('diagnosis_level1').value;
-                const level2 = document.getElementById('diagnosis_level2').value;
-                const level3 = document.getElementById('diagnosis_level3').value;
+                const path = DiagnosisCascade.getSelectedPath();
                 
                 // Remove any existing dynamic dropdown rows
                 document.querySelectorAll('.dynamic-diagnosis-row').forEach(row => row.remove());
@@ -1061,17 +899,7 @@
                 const messageDiv = document.getElementById('no-fields-message');
                 messageDiv.style.display = 'none';
                 
-                // Build diagnosis string based on available levels
-                let diagnosis = '';
-                if (level1) {
-                    diagnosis = level1;
-                    if (level2) {
-                        diagnosis += ' > ' + level2;
-                        if (level3) {
-                            diagnosis += ' > ' + level3;
-                        }
-                    }
-                }
+                const diagnosis = path.join(' > ');
                 
                 if (!diagnosis) {
                     messageDiv.textContent = 'Please select at least Level 1 diagnosis';
@@ -1353,15 +1181,10 @@
             function resetForm() {
                 const form = document.querySelector('form');
                 form.reset();
-                // Reset dynamic dropdowns
-                updateDiagnosisLevel2();
                 // Clear file list display
                 document.getElementById('fileList').innerHTML = '';
                 // Hide additional fields
                 document.getElementById('diagnosis-specific-dropdowns-row').style.display = 'none';
-                // Hide hierarchy
-                const hierarchyDiv = document.getElementById('diagnosis-hierarchy');
-                if (hierarchyDiv) hierarchyDiv.style.display = 'none';
                 // Hide messages
                 const messageDiv = document.getElementById('no-fields-message');
                 if (messageDiv) messageDiv.style.display = 'none';
@@ -1395,22 +1218,26 @@
 
            // Initialize form fields on page load
            document.addEventListener('DOMContentLoaded', async function() {
-               // Load OncoTree data for client-side autocomplete
                await loadOncotreeData();
-               
-               // Only update diagnosis dropdowns if there's no existing diagnosis data
-               const level1Select = document.getElementById('diagnosis_level1');
-               const level2Select = document.getElementById('diagnosis_level2');
-               const level3Select = document.getElementById('diagnosis_level3');
-               
-               // Check if dropdowns are already populated (from session data)
-               const hasExistingData = level1Select.value || level2Select.value || level3Select.value;
-               
-               if (!hasExistingData) {
-                   updateDiagnosisLevel2();
+
+               await DiagnosisCascade.init('diagnosis-cascade', level1List, initialDiagnosisPath, {
+                   requireLevel1: false,
+                   onChange: function(path) {
+                       clearAdditionalFields();
+                       if (path && path.length >= 2) {
+                           document.getElementById('diagnosis_free_text').value = '';
+                       }
+                   }
+               });
+
+               if (initialDiagnosisPath && initialDiagnosisPath.length > 0) {
+                   const section = document.getElementById('advanced-diagnosis-section');
+                   const caret = document.getElementById('advanced-caret');
+                   if (section) section.style.display = '';
+                   if (caret) caret.classList.add('expanded');
                }
                
-               initAutocomplete(); // Initialize auto-complete functionality
+               initAutocomplete();
                initializeFileList();
                setupGenomicDropArea();
            });
@@ -1418,14 +1245,11 @@
             function validateDiagnosis() {
                 console.log('Validating diagnosis...');
                 const freeTextDiagnosis = document.getElementById('diagnosis_free_text').value.trim();
-                const level1Diagnosis = document.getElementById('diagnosis_level1').value;
-                const level2Diagnosis = document.getElementById('diagnosis_level2').value;                
-                
-                // Check if either free text or complete advanced diagnosis is provided
-                const hasAdvancedDiagnosis = level1Diagnosis && level2Diagnosis; // Level 3 is optional
+                const path = DiagnosisCascade.getSelectedPath();
+                const hasAdvancedDiagnosis = path.length >= 2;
                 
                 if (!freeTextDiagnosis && !hasAdvancedDiagnosis) {
-                    if (level1Diagnosis && !level2Diagnosis) {
+                    if (path.length === 1) {
                         console.log('Validation failed: Level 2 diagnosis required');
                         alert('Please complete the diagnosis selection by choosing a Level 2 diagnosis.');
                     } else {
@@ -1435,16 +1259,15 @@
                     return false;
                 }
                 
-                // If both are provided, show warning about using advanced options
                 if (freeTextDiagnosis && hasAdvancedDiagnosis) {
                     console.log('Both free text and advanced diagnosis provided');
                     if (!confirm('You have entered both free text diagnosis and selected a diagnosis from Advanced Options. The advanced diagnosis selection will be used. Do you want to continue?')) {
                         return false;
                     }
-                    // Clear free text diagnosis since we're using advanced options
                     document.getElementById('diagnosis_free_text').value = '';
                 }
-                
+
+                DiagnosisCascade.updateHiddenFields();
                 console.log('Diagnosis validation passed');
                 return true;
             }
@@ -1469,39 +1292,26 @@
                 loadingOverlay.style.display = 'flex';
             });
 
-            // Update the event listeners to clear free text when advanced diagnosis is selected
-            document.getElementById('diagnosis_free_text').addEventListener('input', function() {
+            document.getElementById('diagnosis_free_text').addEventListener('input', async function() {
                 if (this.value.trim()) {
-                    const level1Diagnosis = document.getElementById('diagnosis_level1').value;
-                    const level2Diagnosis = document.getElementById('diagnosis_level2').value;
-                    
-                    // Only clear advanced diagnosis if it's not complete
-                    if (!(level1Diagnosis && level2Diagnosis)) {
-                        document.getElementById('diagnosis_level1').value = '';
-                        document.getElementById('diagnosis_level2').value = '';
-                        document.getElementById('diagnosis_level3').value = '';
-                        updateDiagnosisLevel2(); // Update the level 2 dropdown
-                        clearAdditionalFields(); // Clear any additional fields
+                    const path = DiagnosisCascade.getSelectedPath();
+                    if (path.length < 2) {
+                        await DiagnosisCascade.init('diagnosis-cascade', level1List, [], {
+                            requireLevel1: false,
+                            onChange: function(selectedPath) {
+                                clearAdditionalFields();
+                                if (selectedPath && selectedPath.length >= 2) {
+                                    document.getElementById('diagnosis_free_text').value = '';
+                                }
+                            }
+                        });
+                        clearAdditionalFields();
                     } else {
-                        // If advanced diagnosis is complete, clear free text instead
                         this.value = '';
                         alert('Advanced diagnosis selection is complete. Free text diagnosis will be ignored when advanced options are selected.');
                     }
                 }
             });
-
-            // Update the existing updateDiagnosisLevel2 function to clear free text when advanced diagnosis is complete
-            const originalUpdateDiagnosisLevel2 = updateDiagnosisLevel2;
-            updateDiagnosisLevel2 = function() {
-                const level1Diagnosis = document.getElementById('diagnosis_level1').value;
-                const level2Diagnosis = document.getElementById('diagnosis_level2').value;
-                
-                if (level1Diagnosis && level2Diagnosis) {
-                    // Clear free text diagnosis if advanced diagnosis is complete
-                    document.getElementById('diagnosis_free_text').value = '';
-                }
-                originalUpdateDiagnosisLevel2();
-            };
 
             // Update the DOMContentLoaded event listener to remove the required indicators initialization
             document.addEventListener('DOMContentLoaded', function() {

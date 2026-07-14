@@ -18,96 +18,67 @@ clinical_json_dir = 'incoming/clinical_json'
 def get_oncotree_diagnosis(mmid, value):
     """
     Oncotree diagnosis mapping:
-    1. If value is exact level2/level3 match, create hierarchy and return
-    2. If not exact match, use AI to find level1, then level2/level3
+    1. If value is an exact OncoTree term at any level, resolve full hierarchy
+    2. Otherwise use AI to find level1, then the closest descendant term
     """
-    level_1_diagnosis, level_2_diagnosis, level_3_diagnosis, mapping_l1_all, level1_to_level2, level2_to_level3 = onct.get_all_oncotree_data()
-    
-    # Step 1: Check if value is an exact level2 or level3 match
-    if value in level_3_diagnosis:
-        # Find parent level2
-        for level2, level3s in level2_to_level3.items():
-            if value in level3s:
-                # Find parent level1
-                for level1, level2s in level1_to_level2.items():
-                    if level2 in level2s:
-                        logger.info(f"MMID: {mmid} | Found exact level3 match: {value}")
-                        return {
-                            'level1': level1,
-                            'level2': level2,
-                            'level3': value
-                        }
-    
-    elif value in level_2_diagnosis:
-        # Find parent level1
-        for level1, level2s in level1_to_level2.items():
-            if value in level2s:
-                logger.info(f"MMID: {mmid} | Found exact level2 match: {value}")
-                return {
-                    'level1': level1,
-                    'level2': value,
-                    'level3': None
-                }
-    
-    # Step 2: Not an exact match, use AI to find hierarchy
+    level_1_list, mapping_l1_all = onct.get_all_oncotree_data()
+
+    exact_match = onct.resolve_diagnosis_hierarchy(value)
+    if exact_match:
+        logger.info(
+            f"MMID: {mmid} | Found exact match: {exact_match['primary_diagnosis']} "
+            f"(path={exact_match['path']})"
+        )
+        return exact_match
+
     logger.info(f"MMID: {mmid} | No exact match found, using AI for: {value}")
-    
-    # Get level1 using AI
-    result = ai.get_level1_diagnosis_from_free_text(mmid, {value}, level_1_diagnosis)
-    
-    # Check for connection errors in the AI response
+
+    result = ai.get_level1_diagnosis_from_free_text(mmid, {value}, level_1_list)
+
     if isinstance(result, dict) and 'error' in result:
         logger.error(f"MMID: {mmid} | AI service error: {result.get('message', 'Unknown error')}")
         raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
-    
-    level1_diagnosis = result.get('oncotree_diagnosis')
-    
+
+    level1_diagnosis = onct.canonicalize_term(result.get('oncotree_diagnosis'), level_1_list)
+
     if not level1_diagnosis:
         logger.debug(f"MMID: {mmid} | No level1 diagnosis found for: {value}")
         return None
-    
-    # Get child diagnosis (level2 or level3) using AI
-    child_oncotree_values = mapping_l1_all[level1_diagnosis]
-    result = ai.get_child_level_diagnosis_from_clinical_condition(mmid, child_oncotree_values, value)
-    
-    # Check for connection errors in the child diagnosis response
+
+    child_oncotree_values = mapping_l1_all.get(level1_diagnosis, set())
+    if not child_oncotree_values:
+        logger.info(f"MMID: {mmid} | No child values for level1={level1_diagnosis}")
+        return onct.build_diagnosis_result_from_path([level1_diagnosis])
+
+    result = ai.get_child_level_diagnosis_from_clinical_condition(
+        mmid, child_oncotree_values, value
+    )
+
     if isinstance(result, dict) and 'error' in result:
-        logger.error(f"MMID: {mmid} | AI service error in child diagnosis: {result.get('message', 'Unknown error')}")
+        logger.error(
+            f"MMID: {mmid} | AI service error in child diagnosis: "
+            f"{result.get('message', 'Unknown error')}"
+        )
         raise Exception(f"AI service error: {result.get('message', 'Unknown error')}")
-    
+
     child_diagnosis = result.get('oncotree_diagnosis', None)
-    
+
     if not child_diagnosis:
         logger.info(f"MMID: {mmid} | No child diagnosis found, returning level1 only")
-        return {
-            'level1': level1_diagnosis,
-            'level2': None,
-            'level3': None
-        }
-    
-    # Determine if child_diagnosis is level2 or level3
-    if child_diagnosis in level1_to_level2.get(level1_diagnosis, []):
-        # It's a level2 diagnosis
-        logger.info(f"MMID: {mmid} | AI found level2: {child_diagnosis}")
-        return {
-            'level1': level1_diagnosis,
-            'level2': child_diagnosis,
-            'level3': None
-        }
-    else:
-        # It's a level3 diagnosis, find its parent level2
-        for level2, level3s in level2_to_level3.items():
-            if child_diagnosis in level3s:
-                logger.info(f"MMID: {mmid} | AI found level3: {child_diagnosis}")
-                return {
-                    'level1': level1_diagnosis,
-                    'level2': level2,
-                    'level3': child_diagnosis
-                }
-    
-    # If we get here, something went wrong
-    logger.error(f"MMID: {mmid} | Could not determine level for child diagnosis: {child_diagnosis}")
-    return None
+        return onct.build_diagnosis_result_from_path([level1_diagnosis])
+
+    resolved = onct.resolve_diagnosis_hierarchy(child_diagnosis)
+    if resolved:
+        logger.info(
+            f"MMID: {mmid} | AI found diagnosis: {resolved['primary_diagnosis']} "
+            f"(path={resolved['path']})"
+        )
+        return resolved
+
+    logger.error(
+        f"MMID: {mmid} | Could not resolve hierarchy for child diagnosis: {child_diagnosis}"
+    )
+    return onct.build_diagnosis_result_from_path([level1_diagnosis])
 
 def calculate_birth_date(age):
     # Calculate the birth date based on the current date and age
@@ -165,18 +136,6 @@ def convert_to_clinical_data_format(text_file):
     return data
 
 def get_additional_info(mmid, additional_info):
-    # logger.info("Begin simulation of additional info extraction...")
-    # time.sleep(20)  # Delay for 10 seconds
-    # logger.info("Simulation complete...")
-    # additional_info_dict = {
-    # "IDH_WILDTYPE": "True",
-    # "TUMOR_MUTATIONAL_BURDEN_PER_MEGABASE": 2.83,
-    # "MGMT_PROMOTER_STATUS": "Unmethylated",  
-    # "HER2_STATUS": "Negative",
-    # "ER_STATUS": "Negative",
-    # "PR_STATUS": "Negative",
-    # "PDL1_STATUS": "Low"
-    # }
     additional_info_dict = ai.get_additional_info(mmid, additional_info)
     return additional_info_dict
 
@@ -192,4 +151,3 @@ if __name__ == "__main__":
     with open(output_file, "w") as json_file:
         json.dump(response, json_file)
     logger.info(f'JSON written to {output_file}')
-

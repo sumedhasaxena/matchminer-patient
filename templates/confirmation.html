@@ -131,6 +131,22 @@
                             <input type="text" id="report_date" name="report_date" value="{{ form_data.report_date }}" readonly>
                         </td>
                     </tr>
+                    {% if diagnosis_result and diagnosis_result.path %}
+                    {% for term in diagnosis_result.path %}
+                    <tr>
+                        <td><label>Diagnosis Level {{ loop.index }}:</label></td>
+                        <td colspan="2">
+                            <input type="text" value="{{ term }}" readonly>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr>
+                        <td><label>Primary Diagnosis:</label></td>
+                        <td colspan="2">
+                            <input type="text" value="{{ diagnosis_result.primary_diagnosis }}" readonly>
+                        </td>
+                    </tr>
+                    {% else %}
                     <tr>
                         <td><label for="diagnosis_level1"><span class="required">*</span>Diagnosis Level 1:</label></td>
                         <td colspan="2">
@@ -149,6 +165,7 @@
                             <input type="text" id="diagnosis_level3" name="diagnosis_level3" value="{{ diagnosis_result.level3 }}" readonly>
                         </td>
                     </tr>
+                    {% endif %}
                     {% for dd in dynamic_dropdowns %}
                     <tr>
                         <td><label for="{{ dd.name }}">{{ dd.label }}:</label></td>

@@ -22,7 +22,13 @@ from urllib.parse import unquote
 from loguru import logger
 
 # Local imports
-from utils.oncotree import get_l1_l2_l3_oncotree_data
+from utils.oncotree import (
+    get_all_oncotree_data,
+    get_children_of_term,
+    build_diagnosis_result_from_path,
+    _read_oncotree_rows,
+    _row_path,
+)
 from utils.diagnosis_rules import DIAGNOSIS_DROPDOWN_RULES
 from patient_data.patient_data_config import patient_schema_keys, get_clinical_fields, is_clinical_field
 from patient_data.get_patient_clinical_data import get_oncotree_diagnosis, get_additional_info
@@ -42,11 +48,9 @@ for directory in [Config.IMAGE_FOLDER, Config.TEXT_FOLDER, Config.CLINICAL_JSON,
 # Set up logging
 logger.add(Config.APP_LOG, rotation="10 MB", retention="10 days", enqueue=True)
 
-# Load OncoTree data at startup
-level1_list, level1_to_level2, level2_to_level3 = get_l1_l2_l3_oncotree_data()
-level1_list = sorted(list(level1_list))
-level1_to_level2 = {k: sorted(list(v)) for k, v in level1_to_level2.items()}
-level2_to_level3 = {k: sorted(list(v)) for k, v in level2_to_level3.items()}
+# Load OncoTree Level 1 terms at startup (deeper levels loaded on demand)
+level1_list, _ = get_all_oncotree_data()
+level1_list = sorted(level1_list)
 
 class SequenceManager:
     """Manages unique ID generation and sequence counting"""
@@ -269,22 +273,17 @@ class DiagnosisProcessor:
     
     @staticmethod
     def get_diagnosis_result(unique_id: str, diagnosis_free_text: Optional[str] = None,
+                           diagnosis_path: Optional[List[str]] = None,
+                           primary_diagnosis: Optional[str] = None,
                            diagnosis_level1: Optional[str] = None,
                            diagnosis_level2: Optional[str] = None,
                            diagnosis_level3: Optional[str] = None) -> Tuple[Optional[Dict], Optional[str]]:
         """
         Get diagnosis result either from free text lookup or dropdown selections.
         
-        Args:
-            unique_id (str): The unique patient ID
-            diagnosis_free_text (str, optional): Free text diagnosis input
-            diagnosis_level1 (str, optional): Level 1 diagnosis from dropdown
-            diagnosis_level2 (str, optional): Level 2 diagnosis from dropdown
-            diagnosis_level3 (str, optional): Level 3 diagnosis from dropdown
-        
         Returns:
             tuple: (diagnosis_result, error_message)
-                - diagnosis_result: dict with level1, level2, level3 keys or None
+                - diagnosis_result: dict with path/primary_diagnosis/level1/2/3 or None
                 - error_message: str error message if any, None otherwise
         """
         try:
@@ -310,17 +309,23 @@ class DiagnosisProcessor:
                         logger.error(f"AI diagnosis lookup failed for {unique_id}: {error_str}")
                         return None, f"Error: AI diagnosis lookup failed. Please try again or use manual diagnosis selection."
             else:
-                if not diagnosis_level1:
+                path = [term for term in (diagnosis_path or []) if term]
+                if not path:
+                    path = [
+                        term for term in [
+                            diagnosis_level1,
+                            diagnosis_level2,
+                            diagnosis_level3,
+                        ] if term
+                    ]
+
+                if not path:
                     return None, "Error: Level 1 diagnosis is required"
-                
-                if not diagnosis_level2:
+
+                if len(path) < 2:
                     return None, "Error: Level 2 diagnosis is required"
-                
-                diagnosis_result = {
-                    'level1': diagnosis_level1,
-                    'level2': diagnosis_level2,
-                    'level3': diagnosis_level3
-                }
+
+                diagnosis_result = build_diagnosis_result_from_path(path)
                 return diagnosis_result, None
                 
         except Exception as e:
@@ -382,68 +387,69 @@ def debug_oncotree():
     """Debug endpoint to check OncoTree data"""
     return jsonify({
         'level1_list': level1_list,
-        'mapping_l1_l2': level1_to_level2,
-        'mapping_l2_l3': level2_to_level3
+        'level1_count': len(level1_list),
     })
 
 @app.route('/api/oncotree-data')
 def get_oncotree_data():
     """API endpoint to get OncoTree data for client-side autocomplete"""
-    # Prepare data for client-side autocomplete
     autocomplete_data = []
-    
-    # Add level2 items with their parent level1
-    for level1, level2_list in level1_to_level2.items():
-        for level2 in level2_list:
+    seen = set()
+    rows, level_columns = _read_oncotree_rows()
+    for row in rows:
+        path = _row_path(row, level_columns)
+        for index in range(1, len(path)):
+            key = (path[index - 1], path[index])
+            if key in seen:
+                continue
+            seen.add(key)
             autocomplete_data.append({
-                'parent': level1,
-                'type': 'level2',
-                'value': level2
+                'parent': path[index - 1],
+                'type': f'level{index + 1}',
+                'value': path[index]
             })
-    
-    # Add level3 items with their parent level2
-    for level2, level3_list in level2_to_level3.items():
-        for level3 in level3_list:
-            autocomplete_data.append({
-                'parent': level2,
-                'type': 'level3',
-                'value': level3
-            })
-    
     return jsonify(autocomplete_data)
+
+@app.route('/get_oncotree_children/<path:parent_term>')
+def get_oncotree_children(parent_term: str):
+    """API endpoint to get child OncoTree terms for a selected parent term"""
+    parent_term = unquote(parent_term)
+    logger.debug(f"Received request for oncotree children of: {parent_term}")
+    return jsonify(get_children_of_term(parent_term))
 
 @app.route('/get_level2/<path:level1>')
 def get_level2(level1: str):
     """API endpoint to get level2 values for a given level1"""
     level1 = unquote(level1)
     logger.debug(f"Received request for level1: {level1}")
-    return jsonify(level1_to_level2.get(level1, []))
+    return jsonify(get_children_of_term(level1))
 
 @app.route('/get_level3/<path:level2>')
 def get_level3(level2: str):
     """API endpoint to get level3 values for a given level2"""
     level2 = unquote(level2)
     logger.debug(f"Received request for level2: {level2}")
-    return jsonify(level2_to_level3.get(level2, []))
+    return jsonify(get_children_of_term(level2))
 
 @app.route('/get_additional_diagnosis_dropdowns/<path:diagnosis>')
 def get_additional_diagnosis_dropdowns(diagnosis: str):
     """API endpoint to get dropdown options for a specific diagnosis"""
     diagnosis = unquote(diagnosis)
     
-    parts = diagnosis.split(' > ')
-    level1 = parts[0] if len(parts) > 0 else ''
-    level2 = parts[1] if len(parts) > 1 else ''
-    
+    parts = [part for part in diagnosis.split(' > ') if part]
     dropdowns = []
-    
-    if level1 in DIAGNOSIS_DROPDOWN_RULES:
-        if 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[level1]:
-            dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level1]['dropdowns'])
-    
-    if level2 in DIAGNOSIS_DROPDOWN_RULES:
-        if 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[level2]:
-            dropdowns.extend(DIAGNOSIS_DROPDOWN_RULES[level2]['dropdowns'])
+    seen_names = set()
+
+    for part in parts:
+        rule = DIAGNOSIS_DROPDOWN_RULES.get(part)
+        if not rule or 'dropdowns' not in rule:
+            continue
+        for dropdown in rule['dropdowns']:
+            name = dropdown['name']
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            dropdowns.append(dropdown)
     
     return jsonify(dropdowns)
 
@@ -531,8 +537,30 @@ def index():
             else:# When diagnosis was selected using dropdowns
                 logger.info(f"{unique_id} | Processing manually selected diagnosis")
                 try:
+                    diagnosis_path = []
+                    raw_path = form_data.get('diagnosis_path', '')
+                    if raw_path:
+                        try:
+                            diagnosis_path = json.loads(raw_path)
+                        except (TypeError, json.JSONDecodeError):
+                            diagnosis_path = []
+                    if not isinstance(diagnosis_path, list):
+                        diagnosis_path = []
+
+                    # Fall back to collecting cascade selects if path missing
+                    if not diagnosis_path:
+                        level_index = 1
+                        while True:
+                            level_value = form_data.get(f'diagnosis_level{level_index}', '')
+                            if not level_value:
+                                break
+                            diagnosis_path.append(level_value)
+                            level_index += 1
+
                     diagnosis_result, diagnosis_error = DiagnosisProcessor.get_diagnosis_result(
                         unique_id=unique_id,
+                        diagnosis_path=diagnosis_path,
+                        primary_diagnosis=form_data.get('primary_diagnosis', ''),
                         diagnosis_level1=form_data.get('diagnosis_level1', ''),
                         diagnosis_level2=form_data.get('diagnosis_level2', ''),
                         diagnosis_level3=form_data.get('diagnosis_level3', '')
@@ -545,17 +573,13 @@ def index():
 
                     # Handle dynamic diagnosis dropdowns only when using dropdown selection
                     if diagnosis_result:
-                        # Get the appropriate diagnosis level for dropdown rules
-                        diagnosis_levels = {diagnosis_result.get('level1'), diagnosis_result.get('level2'), diagnosis_result.get('level3')} - {None, ''}
+                        diagnosis_levels = set(diagnosis_result.get('path') or []) - {None, ''}
                         
-                        # Check each diagnosis level for dropdown rules
                         for diagnosis_for_rules in diagnosis_levels:
                             if diagnosis_for_rules in DIAGNOSIS_DROPDOWN_RULES:
-                                # Get the dropdowns defined for this diagnosis
                                 if 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]:
                                     dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_for_rules]['dropdowns']
                                     
-                                    # Store dropdown values in session
                                     for dropdown in dropdowns:
                                         dropdown_name = dropdown['name']
                                         if dropdown_name in form_data:
@@ -592,12 +616,10 @@ def index():
                                 if manual_value != ai_value:
                                     # Conflict detected - keep manual value, track for user info
                                     dropdowns = []
-                                    if diagnosis_result.get('level1') in DIAGNOSIS_DROPDOWN_RULES and 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level1')]:
-                                        dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level1')]['dropdowns']
-                                    elif diagnosis_result.get('level2') in DIAGNOSIS_DROPDOWN_RULES and 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level2')]:
-                                        dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level2')]['dropdowns']
-                                    elif diagnosis_result.get('level3') in DIAGNOSIS_DROPDOWN_RULES and 'dropdowns' in DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level3')]:
-                                        dropdowns = DIAGNOSIS_DROPDOWN_RULES[diagnosis_result.get('level3')]['dropdowns']
+                                    for part in (diagnosis_result.get('path') or []):
+                                        rule = DIAGNOSIS_DROPDOWN_RULES.get(part)
+                                        if rule and 'dropdowns' in rule:
+                                            dropdowns.extend(rule['dropdowns'])
                                     
                                     field_label = next((dd['label'] for dd in dropdowns if dd['name'] == patient_clinical_schema_key), patient_clinical_schema_key)
                                     conflicts.append(f"{field_label}: Manual = '{manual_value}' vs Description = '{ai_value}'")
@@ -651,17 +673,15 @@ def index():
 
     # Pre-populate from session
     form_data = session.get('form_data', {})
-    diagnosis_result = session.get('diagnosis_result', {})
+    diagnosis_result = session.get('diagnosis_result', {}) or {}
+    if diagnosis_result and not diagnosis_result.get('path'):
+        diagnosis_result = build_diagnosis_result_from_path([
+            diagnosis_result.get('level1'),
+            diagnosis_result.get('level2'),
+            diagnosis_result.get('level3'),
+        ]) or diagnosis_result
     free_text_diagnosis = session.get('free_text_diagnosis', '')
     extracted_text = session.get('extracted_text', '')
-    
-
-    
-    # Prepare level2 and level3 lists for dropdown population
-    selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
-    selected_level2 = diagnosis_result.get('level2') if diagnosis_result else None
-    level2_list = level1_to_level2.get(selected_level1, []) if selected_level1 else []
-    level3_list = level2_to_level3.get(selected_level2, []) if selected_level2 else []
 
     return render_template(
         'index.html',
@@ -670,8 +690,6 @@ def index():
         free_text_diagnosis=free_text_diagnosis,
         extracted_text=extracted_text,
         level1_list=level1_list,
-        level2_list=level2_list,
-        level3_list=level3_list,
     )
 
 @app.route('/review', methods=['GET'])
@@ -686,15 +704,17 @@ def review():
         logger.error("No form data found in session during review")
         return redirect(url_for('index'))
 
+    if diagnosis_result and not diagnosis_result.get('path'):
+        diagnosis_result = build_diagnosis_result_from_path([
+            diagnosis_result.get('level1'),
+            diagnosis_result.get('level2'),
+            diagnosis_result.get('level3'),
+        ]) or diagnosis_result
+        session['diagnosis_result'] = diagnosis_result
+
     # Build dynamic dropdowns
     dynamic_dropdowns = DiagnosisProcessor.build_dynamic_dropdowns()
     dynamic_texts = DiagnosisProcessor.build_dynamic_texts()
-    
-    # Prepare level2 and level3 lists
-    selected_level1 = diagnosis_result.get('level1') if diagnosis_result else None
-    selected_level2 = diagnosis_result.get('level2') if diagnosis_result else None
-    level2_list = level1_to_level2.get(selected_level1, []) if selected_level1 else []
-    level3_list = level2_to_level3.get(selected_level2, []) if selected_level2 else []
    
     # Store dynamic_dropdowns in session
     session['dynamic_dropdowns'] = dynamic_dropdowns
@@ -705,33 +725,55 @@ def review():
         form_data=form_data,
         free_text_diagnosis=free_text_diagnosis,
         level1_list=level1_list,
-        diagnosis_result=diagnosis_result,
+        diagnosis_result=diagnosis_result or {},
         diagnosis_error=diagnosis_error,
         dynamic_dropdowns=dynamic_dropdowns,
         dynamic_texts=dynamic_texts,
-        level2_list=level2_list,
-        level3_list=level3_list
     )
 
 @app.route('/submit_review', methods=['POST'])
 def submit_review():
     """Submit review and start background processing"""
     try:
-        # Get form data
-        diagnosis_level1 = request.form.get('diagnosis_level1')
-        diagnosis_level2 = request.form.get('diagnosis_level2')
-        diagnosis_level3 = request.form.get('diagnosis_level3')
-        
         form_data = session.get('form_data')
         if not form_data:
             logger.error("No form data found in session during submit_review")
             return redirect(url_for('index'))
+
+        diagnosis_path = []
+        raw_path = request.form.get('diagnosis_path', '')
+        if raw_path:
+            try:
+                diagnosis_path = json.loads(raw_path)
+            except (TypeError, json.JSONDecodeError):
+                diagnosis_path = []
+        if not isinstance(diagnosis_path, list):
+            diagnosis_path = []
+
+        if not diagnosis_path:
+            level_index = 1
+            while True:
+                level_value = request.form.get(f'diagnosis_level{level_index}')
+                if not level_value:
+                    break
+                diagnosis_path.append(level_value)
+                level_index += 1
+
+        primary_diagnosis = request.form.get('primary_diagnosis', '').strip()
+        diagnosis_result = build_diagnosis_result_from_path(diagnosis_path)
+        if not diagnosis_result:
+            flash('Error: Diagnosis is required')
+            return redirect(url_for('review'))
+
+        diagnosis_value = primary_diagnosis or diagnosis_result['primary_diagnosis']
         
         # Update form data with selected diagnosis
         form_data.update({
-            'diagnosis_level1': diagnosis_level1,
-            'diagnosis_level2': diagnosis_level2,
-            'diagnosis_level3': diagnosis_level3
+            'diagnosis_level1': diagnosis_result.get('level1'),
+            'diagnosis_level2': diagnosis_result.get('level2'),
+            'diagnosis_level3': diagnosis_result.get('level3'),
+            'primary_diagnosis': diagnosis_value,
+            'diagnosis_path': diagnosis_result.get('path'),
         })
         
         unique_id = form_data.get('unique_id')
@@ -749,9 +791,6 @@ def submit_review():
             logger.info(f"Saved modified extracted text for {unique_id}")
         else:
             logger.debug(f"No changes to extracted text for {unique_id}")
-        
-        # Determine diagnosis value
-        diagnosis_value = diagnosis_level3 or diagnosis_level2
         
         # Process dynamic dropdowns
         session_dynamic_dropdowns = session.get('dynamic_dropdowns', [])
@@ -811,15 +850,9 @@ def submit_review():
             form_data=form_data,
             free_text_diagnosis=session.get('free_text_diagnosis'),
             level1_list=level1_list,
-            diagnosis_result={
-                'level1': diagnosis_level1,
-                'level2': diagnosis_level2,
-                'level3': diagnosis_level3
-            },
+            diagnosis_result=diagnosis_result,
             dynamic_dropdowns=dynamic_dropdowns,
             dynamic_texts=dynamic_texts,
-            level2_list=level1_to_level2.get(diagnosis_level1, []),
-            level3_list=level2_to_level3.get(diagnosis_level2, []),
             success_message=flash_msg
         )
         
