@@ -1,0 +1,54 @@
+[
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "LRP1B",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Nonsense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.Q634*"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "PIK3CA",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.E545K"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "RBM10",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Frame_Shift_Del",
+        "TRUE_PROTEIN_CHANGE": "p.E292fs"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "TP53",
+        "VARIANT_CATEGORY": "MUTATION",
+        "TRUE_VARIANT_CLASSIFICATION": "Missense_Mutation",
+        "TRUE_PROTEIN_CHANGE": "p.F270S"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "BRCA2",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "RB1",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "RAD51",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    },
+    {
+        "WILDTYPE": false,
+        "TRUE_HUGO_SYMBOL": "FLCN",
+        "VARIANT_CATEGORY": "CNV",
+        "CNV_CALL": "Heterozygous deletion"
+    }
+]
